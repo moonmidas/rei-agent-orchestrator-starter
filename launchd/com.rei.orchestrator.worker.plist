@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.rei.orchestrator.worker</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>cd /opt/rei-agent-orchestrator && PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick</string></array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><true/>
+</dict></plist>
