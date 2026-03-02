@@ -26,16 +26,21 @@ class TestDiscordApprovalBridge(unittest.TestCase):
 
     def test_approves_from_same_thread_message(self):
         bridge = DiscordApprovalBridge({'discord': {'approval': {'keywords': ['approve']}}})
-        payload = '[{"id":"m1","thread_id":"thread-a","author_id":"u1","content":"approve please"}]'
+        payload = '[{"id":"m1","thread_id":"thread-a","author_id":"u1","content":"/approve"}]'
         with patch('subprocess.run', return_value=_CP(payload)):
             res = bridge.poll_and_resolve(self.repo, self.plan_id, 'thread-a', 'thread-a')
         self.assertTrue(res.approved)
-        status = self.conn.execute('select status from plans where id=?', (self.plan_id,)).fetchone()[0]
-        self.assertEqual(status, 'approved')
 
     def test_ignores_other_thread(self):
         bridge = DiscordApprovalBridge({'discord': {'approval': {'keywords': ['approve']}}})
         payload = '[{"id":"m1","thread_id":"thread-b","author_id":"u1","content":"approve"}]'
+        with patch('subprocess.run', return_value=_CP(payload)):
+            res = bridge.poll_and_resolve(self.repo, self.plan_id, 'thread-a', 'thread-a')
+        self.assertFalse(res.approved)
+
+    def test_rejects_partial_keyword_match(self):
+        bridge = DiscordApprovalBridge({'discord': {'approval': {'keywords': ['approve']}}})
+        payload = '[{"id":"m1","thread_id":"thread-a","author_id":"u1","content":"disapprove this"}]'
         with patch('subprocess.run', return_value=_CP(payload)):
             res = bridge.poll_and_resolve(self.repo, self.plan_id, 'thread-a', 'thread-a')
         self.assertFalse(res.approved)

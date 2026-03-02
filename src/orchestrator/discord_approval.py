@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 
@@ -18,8 +19,19 @@ class DiscordApprovalBridge:
         self.config = config
 
     def _keywords(self) -> list[str]:
-        kws = self.config.get('discord', {}).get('approval', {}).get('keywords', ['approve', '/approve', 'lgtm'])
-        return [k.lower() for k in kws]
+        kws = self.config.get('discord', {}).get('approval', {}).get('keywords', ['approve', '/approve', 'lgtm', 'ship it'])
+        return [k.lower().strip() for k in kws if str(k).strip()]
+
+    def _is_approval_text(self, text: str) -> bool:
+        low = text.lower().strip()
+        if not low:
+            return False
+        keywords = self._keywords()
+        for kw in keywords:
+            patt = r'(^|\b)' + re.escape(kw) + r'(\b|$)'
+            if re.search(patt, low):
+                return True
+        return low in {'✅', 'yes', 'approved'}
 
     def _fetch_command(self, thread_id: str, limit: int) -> list[str]:
         cfg = self.config.get('discord', {}).get('approval', {})
@@ -66,16 +78,12 @@ class DiscordApprovalBridge:
         if not messages:
             return ApprovalIngestResult(approved=False)
 
-        keywords = self._keywords()
         for m in messages:
             msg_thread = str(m.get('thread_id') or m.get('threadId') or m.get('channel_id') or m.get('channelId') or '')
             if msg_thread and msg_thread != source_thread_id:
                 continue
             text = str(m.get('content') or m.get('text') or '').strip()
-            if not text:
-                continue
-            low = text.lower()
-            if not any(k in low for k in keywords):
+            if not self._is_approval_text(text):
                 continue
             approver = str(m.get('author_id') or m.get('authorId') or m.get('user_id') or 'unknown')
             repo.approve_plan(plan_id, approver, source_thread_id, text)
