@@ -70,6 +70,21 @@ class Repository:
         self.conn.commit()
         return artifact_id
 
+
+    def upsert_ci_check(self, check_id: str, run_id: str, provider: str, status: str, details: dict[str, Any] | None = None):
+        self.conn.execute(
+            """
+            INSERT INTO ci_checks(id,run_id,provider,status,details_json,updated_at)
+            VALUES (?,?,?,?,?,datetime('now'))
+            ON CONFLICT(id) DO UPDATE SET
+              status=excluded.status,
+              details_json=excluded.details_json,
+              updated_at=datetime('now')
+            """,
+            (check_id, run_id, provider, status, json.dumps(details or {}, sort_keys=True)),
+        )
+        self.conn.commit()
+
     def get_or_create_run(self, task_id: str, agent_id: str, dedupe_key: str, state: str = 'queued') -> str:
         row = self.conn.execute('SELECT id FROM runs WHERE dedupe_key=?', (dedupe_key,)).fetchone()
         if row:
