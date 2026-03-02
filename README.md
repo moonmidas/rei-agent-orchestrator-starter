@@ -36,7 +36,10 @@ Under `src/orchestrator/`:
 - DB repository primitives (plans/tasks/runs/events/approvals/artifacts/ci_checks)
 - `/execute-plan` parse + plan/task creation flow
 - Approval gate (`approve`) with thread-id checks
-- Dispatch with code-task PR enforcement
+- Discord inbound approval bridge (`approve-from-discord`) using configurable `openclaw message read` polling
+  - enforces same-thread approval only
+- Dispatch with code-task PR enforcement via real OpenClaw CLI adapter (`openclaw sessions spawn` by default)
+  - persists OpenClaw session linkage on `runs` (`openclaw_session_key`, command, raw response)
 - GitHub integration via `gh` CLI:
   - PR auto-create/check for code tasks (`dispatch-next` with configured repo)
   - CI polling from GitHub Actions (`ci-poll`)
@@ -45,12 +48,14 @@ Under `src/orchestrator/`:
   - `capture-screenshot` command path (Playwright-compatible command template)
   - screenshot artifacts persisted to DB with metadata
 - CLI entrypoints:
-  - `migrate`, `execute-plan`, `approve`, `dispatch-next`, `ci-update`, `ci-poll`, `capture-screenshot`, `worker-tick`
+  - `migrate`, `execute-plan`, `approve`, `approve-from-discord`, `dispatch-next`, `ci-update`, `ci-poll`, `capture-screenshot`, `worker-tick`
 
 ## Remaining caveats
 
 - Linux installer is production path; macOS uses a user-run helper (`scripts/install-launchd-macos.sh`) instead of a root cross-platform installer.
 - GitHub integration currently uses GitHub CLI (`gh`) and assumes repository auth is already configured.
+- Discord inbound approvals are poll-based (no webhook subscription in this package yet). Configure `discord.approval.fetchCommand` to match your OpenClaw message plugin wiring.
+- OpenClaw dispatch command is configurable at `runtime.openclawDispatch.command`; default assumes `openclaw sessions spawn` exists on installed OpenClaw CLI.
 
 ## Requirements
 
@@ -100,6 +105,7 @@ PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli worker-ti
 PYTHONPATH=. python3 -m src.orchestrator.cli migrate
 PYTHONPATH=. python3 -m src.orchestrator.cli execute-plan --thread-id <thread> --text '/execute-plan ...'
 PYTHONPATH=. python3 -m src.orchestrator.cli approve --plan-id <id> --thread-id <thread> --approver <user>
+PYTHONPATH=. python3 -m src.orchestrator.cli approve-from-discord --plan-id <id> --thread-id <thread>
 PYTHONPATH=. python3 -m src.orchestrator.cli dispatch-next --plan-id <id> --branch task/<id> --github-repo owner/repo
 PYTHONPATH=. python3 -m src.orchestrator.cli ci-poll --run-id <id> --branch task/<id> --github-repo owner/repo
 PYTHONPATH=. python3 -m src.orchestrator.cli capture-screenshot --task-id <task-id> --run-id <run-id> --url https://example.com
