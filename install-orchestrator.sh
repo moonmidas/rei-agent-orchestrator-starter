@@ -5,6 +5,7 @@ APP_DIR=${APP_DIR:-/opt/rei-agent-orchestrator}
 APP_USER=${APP_USER:-clawdbot}
 REPO_URL=${REPO_URL:-https://github.com/moonmidas/rei-agent-orchestrator-starter.git}
 BRANCH=${BRANCH:-main}
+WORKER_INTERVAL_SECONDS=${WORKER_INTERVAL_SECONDS:-60}
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run as root (sudo bash install-orchestrator.sh)"
@@ -27,12 +28,27 @@ require_gateway() {
   fi
 }
 
+install_scheduler_linux() {
+  local service_out=/etc/systemd/system/rei-orchestrator-worker.service
+  local timer_out=/etc/systemd/system/rei-orchestrator-worker.timer
+  sed \
+    -e "s|{{APP_USER}}|$APP_USER|g" \
+    -e "s|{{APP_DIR}}|$APP_DIR|g" \
+    -e "s|{{OPENCLAW_HOME}}|$OPENCLAW_HOME|g" \
+    "$APP_DIR/templates/systemd/rei-orchestrator-worker.service" > "$service_out"
+  sed -e "s|{{INTERVAL_SECONDS}}|$WORKER_INTERVAL_SECONDS|g" \
+    "$APP_DIR/templates/systemd/rei-orchestrator-worker.timer" > "$timer_out"
+
+  systemctl daemon-reload
+  systemctl enable --now rei-orchestrator-worker.timer
+}
+
 echo "Install profile: orchestrator-only"
 echo "[preflight] checking prerequisites"
 require_openclaw
 require_gateway
 
-echo "[1/5] install dependencies"
+echo "[1/6] install dependencies"
 apt-get update -y
 apt-get install -y git curl jq build-essential sqlite3
 
@@ -40,7 +56,7 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$APP_USER"
 fi
 
-echo "[2/5] fetch starter repo"
+echo "[2/6] fetch starter repo"
 if [[ -d "$APP_DIR/.git" ]]; then
   git -C "$APP_DIR" fetch origin "$BRANCH"
   git -C "$APP_DIR" checkout "$BRANCH"
@@ -51,7 +67,7 @@ else
 fi
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
-echo "[3/5] install execute-plan skill"
+echo "[3/6] install execute-plan skill"
 SKILL_DST="/home/$APP_USER/.openclaw/workspace/skills/execute-plan"
 mkdir -p "$SKILL_DST"
 cp -r "$APP_DIR/skills/execute-plan/"* "$SKILL_DST/"
@@ -74,12 +90,13 @@ fi
 
 chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_HOME"
 
-echo "[6/6] post-install checks"
+echo "[6/6] install and enable scheduler"
+install_scheduler_linux
+
+echo "[post-install] checks"
 OPENCLAW_HOME="$OPENCLAW_HOME" "$APP_DIR/scripts/doctor.sh"
 
 echo "done"
 echo "Installed orchestrator starter to $APP_DIR"
-echo "Profile: orchestrator-only"
-echo "Next steps:"
-echo "  1) Edit /home/$APP_USER/.openclaw/openclaw.json with real tokens"
-echo "  2) Verify orchestrator: $APP_DIR/scripts/doctor.sh"
+echo "Worker timer: systemctl status rei-orchestrator-worker.timer"
+echo "macOS helper (run as user): $APP_DIR/scripts/install-launchd-macos.sh"

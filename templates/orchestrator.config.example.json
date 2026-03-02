@@ -34,12 +34,22 @@
     "linux": {
       "mode": "systemd-timer",
       "service": "rei-orchestrator-worker.service",
-      "timer": "rei-orchestrator-worker.timer"
+      "timer": "rei-orchestrator-worker.timer",
+      "intervalSeconds": 60
     },
     "macos": {
       "mode": "launchd",
       "label": "com.rei.orchestrator.worker",
-      "plist": "~/Library/LaunchAgents/com.rei.orchestrator.worker.plist"
+      "plist": "~/Library/LaunchAgents/com.rei.orchestrator.worker.plist",
+      "intervalSeconds": 60
     }
+  },
+  "github": {
+    "repo": "owner/repo",
+    "baseBranch": "main",
+    "requirePrForCodeTasks": true
+  },
+  "screenshot": {
+    "command": "npx playwright screenshot {url} {output}"
   }
 }
