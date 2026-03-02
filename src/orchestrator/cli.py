@@ -5,6 +5,7 @@ from .config import load_config
 from .db.migrations import connect, run_migrations
 from .db.repository import Repository
 from .plan_service import PlanService
+from .dispatch import DispatchEngine
 
 
 def _repo(args):
@@ -45,6 +46,27 @@ def cmd_approve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dispatch_next(args: argparse.Namespace) -> int:
+    cfg, conn, repo = _repo(args)
+    row = conn.execute("select * from tasks where plan_id=? and status='approved' order by sequence_no limit 1", (args.plan_id,)).fetchone()
+    if not row:
+        print('dispatch=noop')
+        return 0
+    engine = DispatchEngine(repo, cfg)
+    run_id = engine.dispatch_task(row, args.branch, args.pr_url)
+    print(f'run_id={run_id}')
+    return 0
+
+
+def cmd_ci_update(args: argparse.Namespace) -> int:
+    cfg, _, repo = _repo(args)
+    engine = DispatchEngine(repo, cfg)
+    checks = [{'status': s.strip()} for s in args.statuses.split(',') if s.strip()]
+    state = engine.process_ci(args.run_id, checks)
+    print(f'state={state}')
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog='orchestrator')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -67,6 +89,19 @@ def main() -> int:
     ap.add_argument('--approver', required=True)
     ap.add_argument('--text', default='approve')
     ap.set_defaults(func=cmd_approve)
+
+    dn = sub.add_parser('dispatch-next')
+    dn.add_argument('--config')
+    dn.add_argument('--plan-id', required=True)
+    dn.add_argument('--branch')
+    dn.add_argument('--pr-url')
+    dn.set_defaults(func=cmd_dispatch_next)
+
+    cu = sub.add_parser('ci-update')
+    cu.add_argument('--config')
+    cu.add_argument('--run-id', required=True)
+    cu.add_argument('--statuses', required=True, help='comma-separated: pending,success,failed')
+    cu.set_defaults(func=cmd_ci_update)
 
     args = parser.parse_args()
     return args.func(args)
