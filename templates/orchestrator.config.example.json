@@ -10,6 +10,17 @@
         "approve",
         "/approve",
         "lgtm"
+      ],
+      "fetchCommand": [
+        "openclaw",
+        "message",
+        "read",
+        "--channel",
+        "discord",
+        "--target",
+        "{thread_id}",
+        "--limit",
+        "{limit}"
       ]
     },
     "notifications": {
@@ -51,5 +62,22 @@
   },
   "screenshot": {
     "command": "npx playwright screenshot {url} {output}"
+  },
+  "runtime": {
+    "openclawDispatch": {
+      "command": [
+        "openclaw",
+        "sessions",
+        "spawn",
+        "--agent",
+        "{agent}",
+        "--label",
+        "orchestrator:{run_id}",
+        "--task-id",
+        "{task_id}",
+        "--plan-id",
+        "{plan_id}"
+      ]
+    }
   }
 }

@@ -54,6 +54,14 @@ class Repository:
         )
         self.conn.commit()
 
+
+    def attach_dispatch_session(self, run_id: str, session_key: str, dispatch_command: str, response: dict[str, Any]):
+        self.conn.execute(
+            "UPDATE runs SET openclaw_session_key=?, dispatch_command=?, dispatch_response_json=?, updated_at=datetime('now') WHERE id=?",
+            (session_key, dispatch_command, json.dumps(response, sort_keys=True), run_id),
+        )
+        self.conn.commit()
+
     def add_event(self, event_type: str, payload: dict[str, Any], plan_id: str | None = None, task_id: str | None = None, run_id: str | None = None):
         self.conn.execute(
             'INSERT INTO events(plan_id,task_id,run_id,event_type,payload_json) VALUES (?,?,?,?,?)',
@@ -84,6 +92,9 @@ class Repository:
             (check_id, run_id, provider, status, json.dumps(details or {}, sort_keys=True)),
         )
         self.conn.commit()
+
+    def get_run_by_dedupe_key(self, dedupe_key: str):
+        return self.conn.execute('SELECT * FROM runs WHERE dedupe_key=?', (dedupe_key,)).fetchone()
 
     def get_or_create_run(self, task_id: str, agent_id: str, dedupe_key: str, state: str = 'queued') -> str:
         row = self.conn.execute('SELECT id FROM runs WHERE dedupe_key=?', (dedupe_key,)).fetchone()
