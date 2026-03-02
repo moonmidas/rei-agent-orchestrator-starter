@@ -9,6 +9,19 @@ from src.orchestrator.dispatch import DispatchEngine
 from src.orchestrator.watchdog import Watchdog
 
 
+class _FakeDispatchAdapter:
+    def dispatch(self, task, run_id, agent):
+        class R:
+            session_key = f'session-{run_id}'
+            command = ['openclaw', 'sessions', 'spawn']
+            raw = {'session_key': session_key}
+        return R()
+
+    @staticmethod
+    def command_for_log(cmd):
+        return ' '.join(cmd)
+
+
 class TestWatchdog(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
@@ -18,7 +31,7 @@ class TestWatchdog(unittest.TestCase):
         self.plan = self.repo.create_plan('th', '/execute-plan code', 'code')
         self.task = self.repo.create_task(self.plan, 'Implement code', 'code', 1)
         self.repo.approve_plan(self.plan, 'u1', 'th', 'approve')
-        self.engine = DispatchEngine(self.repo, load_config(None), {'chad'})
+        self.engine = DispatchEngine(self.repo, load_config(None), {'chad'}, dispatch_adapter=_FakeDispatchAdapter())
         self.run = self.engine.dispatch_task(self.conn.execute('select * from tasks where id=?', (self.task,)).fetchone(), 'b', 'https://pr')
 
     def tearDown(self):
