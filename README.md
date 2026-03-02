@@ -1,179 +1,128 @@
 # Rei Agent Orchestrator Starter
 
-A production-oriented starter package to install an **OpenClaw orchestration stack** with:
+This repo is a **starter bootstrap**, not a finished orchestration engine yet.
 
-- **Rei (`main`)** as orchestrator
-- **Chad (`chad`)** as dev executor
-
-This repo is focused on **installation + runtime bootstrap**.
-It supports two install profiles:
-
-1) `orchestrator-only` (default)
-2) `orchestrator+mission-control` (optional)
+It currently provides install/runtime scaffolding for OpenClaw orchestration and (optionally) Mission Control.
 
 ---
 
-## What this package does
+## Current implementation (as of now)
 
-### Always (both profiles)
-- Installs Node + OpenClaw CLI (if missing)
-- Installs and configures a supervised gateway service (`clawdbot-gateway.service`)
-- Installs `/execute-plan` skill assets into workspace skills path
-- Bootstraps orchestrator config template if missing (`~/.openclaw/openclaw.json`)
-- Provides baseline healthcheck script (`scripts/doctor.sh`)
+### What the code actually does
 
-### Optional profile: `orchestrator+mission-control`
-- Clones + builds Mission Control
-- Starts Mission Control via PM2 (default port `3005`)
-- Runs full-stack checks via `scripts/doctor-full.sh`:
-  - gateway service active
-  - PM2 `mission-control` online
-  - sqlite DB exists
-  - sqlite tables `tasks` and `agent_runs` exist
+`install-orchestrator.sh` currently:
 
----
-
-## What this package does **not** do (yet)
-
-- Full superpowers automation integration out-of-the-box
-- Full CI/review/merge automation loops by itself
-- End-to-end Mission Control feature orchestration logic (beyond install/runtime bootstrap)
-
-> This starter gives you a clean install baseline. Workflow automation layers are added on top.
+1. Installs system dependencies (`git`, `curl`, `jq`, `build-essential`, `sqlite3`).
+2. Installs Node (if missing).
+3. Creates `clawdbot` user if missing.
+4. Installs OpenClaw + PM2 globally for that user.
+5. Clones/updates this starter repo into `/opt/rei-agent-orchestrator`.
+6. Installs the `execute-plan` skill into:
+   - `~/.openclaw/workspace/skills/execute-plan`
+7. Installs systemd unit file:
+   - `clawdbot-gateway.service`
+   - then runs: `daemon-reload`, `enable`, `restart`.
+8. If `~/.openclaw/openclaw.json` does not exist, copies template:
+   - `templates/openclaw.orchestrator.example.json`
+9. Optional full profile (`INSTALL_MISSION_CONTROL=true`):
+   - clones/builds Mission Control
+   - starts it with PM2 on port `3005`
+   - runs `scripts/doctor-full.sh`.
 
 ---
 
-## Architecture at a glance
+## What this repo includes today
 
-- **Gateway**: OpenClaw gateway process, supervised by systemd
-- **Orchestrator**: Rei (`main`) routes work to configured worker agents (default: `chad`)
-- **Skill contract**: `/execute-plan` parser + dispatch contract shipped
-- **Optional** Mission Control: UI/DB runtime managed by PM2
-
----
-
-## Finalized v1 decisions
-
-These defaults are now locked for v1 scaffolding:
-
-- **DB default path:** `${OPENCLAW_HOME}/orchestrator/orchestrator.db` (`OPENCLAW_HOME` defaults to `~/.openclaw`)
-- **Approval location:** captured from the **same Discord thread** used for orchestrator milestone updates
-- **Auto-merge:** default **OFF** (must be explicitly enabled)
-- **Routing:** `routing.map` config is source of truth, with agent auto-discovery from roster and dev fallback to `chad` (no content agent preinstalled by default)
-- **Schedulers by platform:** Linux uses `systemd` timer; macOS uses `launchd`
-
-Reference templates:
-- `templates/orchestrator.config.example.json`
-- `templates/orchestrator.db.schema.sql`
+- `install-orchestrator.sh`
+- `uninstall.sh`
+- `systemd-clawdbot-gateway.service`
+- `skills/execute-plan/*`
+- `templates/openclaw.orchestrator.example.json`
+- `templates/orchestrator.config.example.json` (spec template)
+- `templates/orchestrator.db.schema.sql` (spec schema template)
+- `scripts/doctor.sh`
+- `scripts/doctor-full.sh` (for optional Mission Control profile)
 
 ---
 
-## Prerequisites
+## What is still template/spec only (not fully implemented engine)
 
-- Ubuntu/Debian-like Linux with `sudo`
-- Internet access for package installs + git clone
-- If using Discord:
-  - bot token
-  - guild/channel permissions
+These are defined in docs/templates, but **not yet wired as a full runtime orchestration product** in this starter:
+
+- Dedicated orchestrator worker loop that executes task plans from DB
+- Native cron/timer worker that polls and advances orchestration tasks
+- Full run/task/event lifecycle engine using `orchestrator.db.schema.sql`
+- CI/PR automation loop with approvals/auto-merge policy enforcement
+- Screenshot-required completion gates integrated into orchestrator runtime
+
+In short: the repo has the **contracts + scaffolding**, not the full production orchestrator engine yet.
 
 ---
 
-## Install
+## Agent defaults in current templates
 
-### 1) Orchestrator-only (default)
+- `openclaw.orchestrator.example.json` includes agents: `main`, `chad`, `halbert`
+- `orchestrator.config.example.json` routes:
+  - `code -> chad`
+  - `content -> halbert`
+
+If your current implementation removed/doesn’t use `halbert`, update templates before distribution.
+
+---
+
+## Install profiles
+
+### A) Orchestrator-only (default)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo bash
 ```
 
-### 2) Orchestrator + Mission Control
+### B) Orchestrator + Mission Control
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo INSTALL_MISSION_CONTROL=true bash
 ```
 
-### Optional Mission Control env vars
+Mission Control env overrides:
 
-- `MISSION_CONTROL_DIR` (default `/opt/rei-mission-control`)
-- `MISSION_CONTROL_REPO_URL` (default `https://github.com/crshdn/mission-control.git`)
-- `MISSION_CONTROL_BRANCH` (default `main`)
-- `MISSION_CONTROL_PORT` (default `3005`)
-- `MISSION_CONTROL_DB_PATH` (default `$MISSION_CONTROL_DIR/mission-control.db`)
-
-Example:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | \
-  sudo INSTALL_MISSION_CONTROL=true MISSION_CONTROL_PORT=3010 bash
-```
+- `MISSION_CONTROL_DIR`
+- `MISSION_CONTROL_REPO_URL`
+- `MISSION_CONTROL_BRANCH`
+- `MISSION_CONTROL_PORT`
+- `MISSION_CONTROL_DB_PATH`
 
 ---
 
-## Post-install: required user steps
+## Required post-install user steps
 
-After install, edit:
-
-### A) OpenClaw runtime config
-`/home/clawdbot/.openclaw/openclaw.json`
-
-Set at minimum:
-- `gateway.auth.token`
-- Discord settings (if used): token + channel config
-- Agent roster/models if needed
-- Optional: add custom content/ops agents and map them in routing config
-
-Template:
-- `templates/openclaw.orchestrator.example.json`
-- `templates/orchestrator.config.example.json`
-- `templates/orchestrator.db.schema.sql`
-
-### B) Restart gateway after config edits
-
-```bash
-sudo /bin/systemctl restart clawdbot-gateway
-```
-
-### C) Trust reverse proxy (if using nginx/caddy)
-
-```bash
-openclaw config set gateway.trustedProxies '["127.0.0.1","::1"]'
-sudo /bin/systemctl restart clawdbot-gateway
-```
+1. Edit `~/.openclaw/openclaw.json` with real secrets/tokens.
+2. Restart gateway:
+   ```bash
+   sudo /bin/systemctl restart clawdbot-gateway
+   ```
+3. Run doctor:
+   - Orchestrator-only:
+     ```bash
+     /opt/rei-agent-orchestrator/scripts/doctor.sh
+     ```
+   - Full profile:
+     ```bash
+     /opt/rei-agent-orchestrator/scripts/doctor-full.sh
+     ```
 
 ---
 
-## Verification
+## Operational commands
 
-### Orchestrator-only
-
-```bash
-/opt/rei-agent-orchestrator/scripts/doctor.sh
-```
-
-### Full profile
-
-```bash
-/opt/rei-agent-orchestrator/scripts/doctor-full.sh
-```
-
-Dry-run command preview:
-
-```bash
-/opt/rei-agent-orchestrator/scripts/doctor-full.sh --dry-run
-```
-
----
-
-## Daily operations
-
-### Gateway
+Gateway:
 
 ```bash
 sudo /bin/systemctl status clawdbot-gateway
 sudo /bin/systemctl restart clawdbot-gateway
 ```
 
-### Mission Control (if installed)
+Mission Control (if full profile):
 
 ```bash
 pm2 ls
@@ -183,25 +132,10 @@ pm2 logs mission-control
 
 ---
 
-## Hybrid mode: one-off vs persistent worker sessions
-
-Toggle Discord thread-bound persistent sessions:
-
-```bash
-openclaw config set channels.discord.threadBindings.spawnSubagentSessions true
-# or false
-sudo /bin/systemctl restart clawdbot-gateway
-```
-
-- `true` = persistent thread-bound sessions allowed
-- `false` = one-off run mode only
-
----
-
 ## Troubleshooting
 
 ### “bad unit file setting”
-Reinstall the unit and reload:
+Reinstall service file from repo and reload daemon:
 
 ```bash
 sudo install -m 0644 /opt/rei-agent-orchestrator/systemd-clawdbot-gateway.service /etc/systemd/system/clawdbot-gateway.service
@@ -209,32 +143,12 @@ sudo systemctl daemon-reload
 sudo systemctl restart clawdbot-gateway
 ```
 
-### “Proxy headers detected from untrusted address”
-Set `gateway.trustedProxies` (see post-install section).
+### Proxy warning (`untrusted address`)
 
-### “device identity required” in web clients
-Verify token + runtime config + restart gateway.
-
----
-
-## Security notes
-
-- Never commit real tokens to git
-- Keep `openclaw.json` private
-- Keep `gateway.trustedProxies` narrow (only real proxy IPs)
-- Prefer supervised services (systemd) over ad-hoc runs
-
----
-
-## Included files
-
-- `install-orchestrator.sh`
-- `uninstall.sh`
-- `scripts/doctor.sh`
-- `scripts/doctor-full.sh` (when present in full profile path)
-- `templates/openclaw.orchestrator.example.json`
-- `systemd-clawdbot-gateway.service`
-- `skills/execute-plan/*`
+```bash
+openclaw config set gateway.trustedProxies '["127.0.0.1","::1"]'
+sudo /bin/systemctl restart clawdbot-gateway
+```
 
 ---
 
@@ -243,3 +157,9 @@ Verify token + runtime config + restart gateway.
 ```bash
 /opt/rei-agent-orchestrator/uninstall.sh
 ```
+
+---
+
+## Status note
+
+If you want this repo to become a true “drop-in 1000x coding orchestrator”, next work is implementing the runtime engine that uses the provided orchestrator DB schema/config templates (currently scaffold only).
