@@ -1,0 +1,1 @@
+* * * * * cd /opt/rei-agent-orchestrator && PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick >> /var/log/rei-orchestrator-worker.log 2>&1

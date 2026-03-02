@@ -18,3 +18,7 @@ echo "== configured agents =="
 openclaw config get agents.list
 
 echo "doctor: OK"
+
+
+echo "== orchestrator runtime db =="
+"$(dirname "$0")/doctor-runtime.sh"
