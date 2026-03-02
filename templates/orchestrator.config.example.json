@@ -1,0 +1,41 @@
+{
+  "openclawHome": "~/.openclaw",
+  "database": {
+    "path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"
+  },
+  "discord": {
+    "approval": {
+      "mode": "same_thread",
+      "keywords": ["approve", "/approve", "lgtm"]
+    },
+    "notifications": {
+      "milestones": true
+    }
+  },
+  "merge": {
+    "autoMerge": false,
+    "requireGreenChecks": true,
+    "requireApproval": true
+  },
+  "routing": {
+    "map": {
+      "code": "chad",
+      "content": "halbert"
+    },
+    "allowTargetOverride": true,
+    "agentAutoDiscovery": true,
+    "devFallbackAgent": "chad"
+  },
+  "scheduler": {
+    "linux": {
+      "mode": "systemd-timer",
+      "service": "rei-orchestrator-worker.service",
+      "timer": "rei-orchestrator-worker.timer"
+    },
+    "macos": {
+      "mode": "launchd",
+      "label": "com.rei.orchestrator.worker",
+      "plist": "~/Library/LaunchAgents/com.rei.orchestrator.worker.plist"
+    }
+  }
+}

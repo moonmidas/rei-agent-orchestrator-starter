@@ -6,17 +6,23 @@ V1 is DONE only if all pass:
 - One command install succeeds on clean host.
 - Services start under supervision (gateway + orchestrator workers).
 - DB migrations apply automatically.
+- Default DB path resolves to `${OPENCLAW_HOME}/orchestrator/orchestrator.db`.
+- Scheduler installed for host OS:
+  - Linux: `systemd` service + timer
+  - macOS: `launchd` agent/plist
 
 ## Workflow behavior
 - `/execute-plan` produces a structured plan.
 - Plan decomposes into microtasks via superpowers adapter.
 - Microtasks create tasks/runs in DB.
 - Chad/Halbert dispatch happens via canonical path only.
+- Routing respects explicit map + auto-discovered agent roster + Chad dev fallback.
 
 ## CI/PR loop
 - For code tasks, PR is opened and CI status tracked.
 - State transitions are reflected in runs/tasks.
 - Merge policy enforces approval + green checks.
+- Auto-merge default is OFF unless explicitly enabled.
 
 ## Observability
 - Agent Runs shows active and historical runs.
@@ -32,4 +38,4 @@ V1 is DONE only if all pass:
 ## Discord integration
 - Milestone notifications sent to configured thread/channel.
 - One notification per milestone (no spam duplicates).
-
+- Approval is captured from the same Discord thread used for task updates.
