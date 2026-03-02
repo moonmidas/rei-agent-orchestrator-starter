@@ -10,6 +10,7 @@ from .dispatch import DispatchEngine
 from .watchdog import Watchdog
 from .github import GitHubClient
 from .screenshot import ScreenshotCapture
+from .discord_approval import DiscordApprovalBridge
 
 
 def _repo(args):
@@ -49,6 +50,23 @@ def cmd_approve(args: argparse.Namespace) -> int:
     print('status=approved')
     return 0
 
+
+
+def cmd_approve_from_discord(args: argparse.Namespace) -> int:
+    cfg, conn, repo = _repo(args)
+    row = conn.execute('select source_thread_id from plans where id=?', (args.plan_id,)).fetchone()
+    if not row:
+        raise SystemExit('plan not found')
+    source_thread_id = row['source_thread_id']
+    bridge = DiscordApprovalBridge(cfg)
+    result = bridge.poll_and_resolve(repo, args.plan_id, source_thread_id, args.thread_id, args.limit)
+    print(f'plan_id={args.plan_id}')
+    print(f'approved={str(result.approved).lower()}')
+    if result.approved:
+        print(f'approver={result.approver_id}')
+        if result.message_id:
+            print(f'message_id={result.message_id}')
+    return 0
 
 def cmd_dispatch_next(args: argparse.Namespace) -> int:
     cfg, conn, repo = _repo(args)
@@ -140,6 +158,13 @@ def main() -> int:
     ap.add_argument('--approver', required=True)
     ap.add_argument('--text', default='approve')
     ap.set_defaults(func=cmd_approve)
+
+    ad = sub.add_parser('approve-from-discord')
+    ad.add_argument('--config')
+    ad.add_argument('--plan-id', required=True)
+    ad.add_argument('--thread-id', required=True, help='Discord thread/channel id to scan for approval messages')
+    ad.add_argument('--limit', type=int, default=25)
+    ad.set_defaults(func=cmd_approve_from_discord)
 
     dn = sub.add_parser('dispatch-next')
     dn.add_argument('--config')
