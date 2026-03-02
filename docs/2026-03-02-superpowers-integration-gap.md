@@ -12,7 +12,7 @@ Missing:
 - superpowers repo clone
 - superpowers tool wrappers in orchestrator prompts/skills
 - deterministic CI/review automation loop from superpowers patterns
-- sqlite run/task board (mission-control layer)
+- sqlite run/task board (legacy-profile layer)
 
 ## Fastest integration path
 1. Add `scripts/install-superpowers.sh` to clone `obra/superpowers` into `/opt/superpowers`.

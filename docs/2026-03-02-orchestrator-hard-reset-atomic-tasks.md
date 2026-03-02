@@ -11,24 +11,24 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 
 ## Phase A — Hard reset scope cleanup
 
-### A-01 Remove Mission Control from installer
+### A-01 Remove legacy optional profile from installer
 - Status: todo
-- Goal: eliminate `INSTALL_MISSION_CONTROL` profile and all mission-control install logic.
+- Goal: eliminate `INSTALL_LEGACY_PROFILE` profile and all legacy-profile install logic.
 - Files:
   - `install-orchestrator.sh`
 - Done when:
-  - no mission-control env vars or install branches remain.
+  - no legacy-profile env vars or install branches remain.
 
 ### A-02 Remove gateway supervision from package
 - Status: todo
 - Goal: package must not manage gateway service.
 - Files:
-  - `systemd-clawdbot-gateway.service` (delete)
+  - `systemd-gateway service unit` (delete)
   - `install-orchestrator.sh`
   - `uninstall.sh`
   - `README.md`
 - Done when:
-  - repo has zero `clawdbot-gateway.service` references.
+  - repo has zero `gateway service unit` references.
 
 ### A-03 Add hard prerequisite checks
 - Status: todo
