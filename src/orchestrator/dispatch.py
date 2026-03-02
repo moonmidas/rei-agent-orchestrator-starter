@@ -2,16 +2,22 @@ from .artifacts import assert_required_artifacts
 from .ci import aggregate_ci
 from .git_pr import ensure_branch_and_pr
 from .routing import resolve_agent
-from .openclaw_dispatch import OpenClawDispatchAdapter
+from .openclaw_dispatch import OpenClawDispatchAdapter, DispatchError
+from .notifications import MilestoneNotifier
 
 
 class DispatchEngine:
-    def __init__(self, repo, config: dict, available_agents: set[str] | None = None, github_client=None, dispatch_adapter=None):
+    def __init__(self, repo, config: dict, available_agents: set[str] | None = None, github_client=None, dispatch_adapter=None, notifier=None):
         self.repo = repo
         self.config = config
-        self.available_agents = available_agents or {'main', 'chad', 'halbert'}
+        self.available_agents = available_agents
         self.github_client = github_client
         self.dispatch_adapter = dispatch_adapter or OpenClawDispatchAdapter(config)
+        self.notifier = notifier or MilestoneNotifier(config)
+
+    def _origin_thread_for_task(self, task: dict) -> str | None:
+        row = self.repo.conn.execute('select source_thread_id from plans where id=?', (task['plan_id'],)).fetchone()
+        return row['source_thread_id'] if row else None
 
     def dispatch_task(self, task_row, branch_name: str | None = None, pr_url: str | None = None) -> str:
         task = dict(task_row)
@@ -23,21 +29,32 @@ class DispatchEngine:
                 body=f"Automated PR for orchestrator task {task['id']}",
             )
         ensure_branch_and_pr(task, branch_name, pr_url)
-        agent = resolve_agent(task, self.config, self.available_agents)
         dedupe = f"dispatch:{task['id']}"
         existing = self.repo.get_run_by_dedupe_key(dedupe)
-        run_id = existing['id'] if existing else self.repo.create_run(task['id'], agent, dedupe, 'running')
+        origin_thread = self._origin_thread_for_task(task)
+        if existing:
+            run_id = existing['id']
+            agent = existing['agent_id']
+        else:
+            available_agents = self.available_agents or set(getattr(self.dispatch_adapter, '_known_agents', set()) or {'chad'})
+            agent = resolve_agent(task, self.config, available_agents)
+            run_id = self.repo.create_run(task['id'], agent, dedupe, 'running')
+            self.notifier.notify(self.repo, 'queued', task['plan_id'], task['id'], run_id, origin_thread, f"🟡 queued: task {task['id']} -> {agent}")
 
         session_key = existing['openclaw_session_key'] if existing else None
         if not session_key:
-            result = self.dispatch_adapter.dispatch(task, run_id, agent)
-            session_key = result.session_key
-            self.repo.attach_dispatch_session(
-                run_id,
-                result.session_key,
-                self.dispatch_adapter.command_for_log(result.command),
-                result.raw,
-            )
+            try:
+                result = self.dispatch_adapter.dispatch(task, run_id, agent)
+                session_key = result.session_key
+                cmd_for_log = self.dispatch_adapter.command_for_log(result.command)
+                self.repo.attach_dispatch_session(run_id, result.session_key, cmd_for_log, result.raw)
+                self.repo.record_dispatch_attempt(run_id, agent, session_key=result.session_key, dispatch_command=cmd_for_log, response=result.raw)
+            except DispatchError as e:
+                self.repo.record_dispatch_attempt(run_id, agent, dispatch_command=self.dispatch_adapter.command_for_log(e.command) if e.command else '', error=e.raw)
+                self.repo.update_run_state(run_id, 'failed', str(e))
+                self.repo.add_event('run.dispatch_failed', {'agent': agent, 'error': str(e), 'raw': e.raw}, task_id=task['id'], run_id=run_id, plan_id=task['plan_id'])
+                self.notifier.notify(self.repo, 'failed', task['plan_id'], task['id'], run_id, origin_thread, f"🔴 failed: task {task['id']} dispatch error")
+                raise
             self.repo.add_event(
                 'run.dispatched',
                 {'agent': agent, 'session_key': result.session_key},
@@ -45,6 +62,7 @@ class DispatchEngine:
                 run_id=run_id,
                 plan_id=task['plan_id'],
             )
+            self.notifier.notify(self.repo, 'dispatched', task['plan_id'], task['id'], run_id, origin_thread, f"🚀 dispatched: task {task['id']} session={session_key}")
         if branch_name or pr_url:
             self.repo.conn.execute('update tasks set pr_url=?, status=\'in_progress\' where id=?', (pr_url, task['id']))
             self.repo.conn.execute('update runs set branch_name=?, pr_url=? where id=?', (branch_name, pr_url, run_id))
@@ -57,17 +75,25 @@ class DispatchEngine:
         self.repo.update_run_state(run_id, mapped)
         row = self.repo.conn.execute('select task_id from runs where id=?', (run_id,)).fetchone()
         task_id = row['task_id'] if row else None
+        task = self.repo.conn.execute('select * from tasks where id=?', (task_id,)).fetchone() if task_id else None
         if task_id:
             task_state = {'pending': 'waiting_ci', 'success': 'done', 'failed': 'failed'}[state]
             if task_state == 'done':
-                self.repo.conn.execute("update tasks set status='done', completed_at=datetime('now') where id=?", (task_id,))
+                self.complete_task(task)
             else:
                 self.repo.conn.execute('update tasks set status=? where id=?', (task_state, task_id))
-            self.repo.conn.commit()
+                self.repo.conn.commit()
         for c in checks:
             check_id = c.get('id') or f"{c.get('provider','ci')}:{run_id}:{c.get('status','pending')}"
             self.repo.upsert_ci_check(check_id, run_id, c.get('provider', 'unknown'), c.get('status', 'pending'), c.get('details', {}))
         self.repo.add_event('ci.updated', {'state': state}, run_id=run_id, task_id=task_id)
+        if task:
+            origin = self._origin_thread_for_task(dict(task))
+            if mapped == 'waiting_ci':
+                self.notifier.notify(self.repo, 'waiting_ci', task['plan_id'], task['id'], run_id, origin, f"⏳ waiting_ci: task {task['id']}")
+            elif mapped in ('failed', 'completed'):
+                emoji = '🔴' if mapped == 'failed' else '✅'
+                self.notifier.notify(self.repo, mapped, task['plan_id'], task['id'], run_id, origin, f"{emoji} {mapped}: task {task['id']}")
         return mapped
 
     def complete_task(self, task_row, artifacts: list[dict] | None = None):

@@ -2,7 +2,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from src.orchestrator.openclaw_dispatch import OpenClawDispatchAdapter
+from src.orchestrator.openclaw_dispatch import OpenClawDispatchAdapter, DispatchError
 
 
 class TestOpenClawDispatchAdapter(unittest.TestCase):
@@ -21,13 +21,16 @@ class TestOpenClawDispatchAdapter(unittest.TestCase):
 
     def test_dispatch_parses_nested_session_id_from_json(self):
         adapter = OpenClawDispatchAdapter(config={})
-        cp = subprocess.CompletedProcess(
-            args=['openclaw'],
-            returncode=0,
-            stdout='{"status":"ok","result":{"meta":{"agentMeta":{"sessionId":"sess-123"}}}}',
-            stderr='',
-        )
-        with patch('src.orchestrator.openclaw_dispatch.subprocess.run', return_value=cp):
+        cps = [
+            subprocess.CompletedProcess(args=['openclaw'], returncode=0, stdout='{"agents":[{"id":"chad"}]}', stderr=''),
+            subprocess.CompletedProcess(
+                args=['openclaw'],
+                returncode=0,
+                stdout='{"status":"ok","result":{"meta":{"agentMeta":{"sessionId":"sess-123"}}}}',
+                stderr='',
+            ),
+        ]
+        with patch('src.orchestrator.openclaw_dispatch.subprocess.run', side_effect=cps):
             result = adapter.dispatch({'id': 't1', 'plan_id': 'p1', 'title': 'x'}, 'run-1', 'chad')
         self.assertEqual(result.session_key, 'sess-123')
 
@@ -39,15 +42,25 @@ class TestOpenClawDispatchAdapter(unittest.TestCase):
                 }
             }
         })
-        cp = subprocess.CompletedProcess(
-            args=['openclaw'],
-            returncode=0,
-            stdout='run_id=abc\nsession_key=session-42\n',
-            stderr='',
-        )
-        with patch('src.orchestrator.openclaw_dispatch.subprocess.run', return_value=cp):
+        cps = [
+            subprocess.CompletedProcess(args=['openclaw'], returncode=0, stdout='{"agents":[{"id":"chad"}]}', stderr=''),
+            subprocess.CompletedProcess(
+                args=['openclaw'],
+                returncode=0,
+                stdout='run_id=abc\nsession_key=session-42\n',
+                stderr='',
+            ),
+        ]
+        with patch('src.orchestrator.openclaw_dispatch.subprocess.run', side_effect=cps):
             result = adapter.dispatch({'id': 't1', 'plan_id': 'p1', 'title': 'x'}, 'run-1', 'chad')
         self.assertEqual(result.session_key, 'session-42')
+
+    def test_missing_agent_is_blocked(self):
+        adapter = OpenClawDispatchAdapter(config={})
+        cps = [subprocess.CompletedProcess(args=['openclaw'], returncode=0, stdout='{"agents":[{"id":"main"}]}', stderr='')]
+        with patch('src.orchestrator.openclaw_dispatch.subprocess.run', side_effect=cps):
+            with self.assertRaises(DispatchError):
+                adapter.dispatch({'id': 't1', 'plan_id': 'p1', 'title': 'x'}, 'run-1', 'chad')
 
 
 if __name__ == '__main__':
