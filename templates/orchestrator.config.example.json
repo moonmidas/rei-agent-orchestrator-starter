@@ -1,12 +1,16 @@
 {
-  "openclawHome": "~/.openclaw",
+  "openclawHome": "${OPENCLAW_HOME}",
   "database": {
     "path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"
   },
   "discord": {
     "approval": {
       "mode": "same_thread",
-      "keywords": ["approve", "/approve", "lgtm"]
+      "keywords": [
+        "approve",
+        "/approve",
+        "lgtm"
+      ]
     },
     "notifications": {
       "milestones": true

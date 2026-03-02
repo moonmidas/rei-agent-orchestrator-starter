@@ -57,15 +57,25 @@ mkdir -p "$SKILL_DST"
 cp -r "$APP_DIR/skills/execute-plan/"* "$SKILL_DST/"
 chown -R "$APP_USER":"$APP_USER" "/home/$APP_USER/.openclaw/workspace/skills"
 
-echo "[4/5] openclaw config bootstrap (if missing)"
-if [[ ! -f /home/$APP_USER/.openclaw/openclaw.json ]]; then
-  mkdir -p /home/$APP_USER/.openclaw
-  cp "$APP_DIR/templates/openclaw.orchestrator.example.json" /home/$APP_USER/.openclaw/openclaw.json
-  chown -R "$APP_USER":"$APP_USER" /home/$APP_USER/.openclaw
+OPENCLAW_HOME=${OPENCLAW_HOME:-/home/$APP_USER/.openclaw}
+ORCH_HOME="$OPENCLAW_HOME/orchestrator"
+
+echo "[4/6] openclaw config bootstrap (if missing)"
+if [[ ! -f "$OPENCLAW_HOME/openclaw.json" ]]; then
+  mkdir -p "$OPENCLAW_HOME"
+  cp "$APP_DIR/templates/openclaw.orchestrator.example.json" "$OPENCLAW_HOME/openclaw.json"
 fi
 
-echo "[5/5] post-install checks"
-"$APP_DIR/scripts/doctor.sh"
+echo "[5/6] orchestrator runtime layout"
+mkdir -p "$ORCH_HOME" "$ORCH_HOME/logs" "$ORCH_HOME/artifacts"
+if [[ ! -f "$ORCH_HOME/config.json" ]]; then
+  cp "$APP_DIR/templates/orchestrator.config.example.json" "$ORCH_HOME/config.json"
+fi
+
+chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_HOME"
+
+echo "[6/6] post-install checks"
+OPENCLAW_HOME="$OPENCLAW_HOME" "$APP_DIR/scripts/doctor.sh"
 
 echo "done"
 echo "Installed orchestrator starter to $APP_DIR"
