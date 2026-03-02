@@ -5,7 +5,7 @@ Transform `rei-agent-orchestrator-starter` from bootstrap/scaffolding into a **f
 
 ## Non-negotiables (locked)
 1. Assume OpenClaw + Gateway are already installed/running.
-2. No Mission Control dependency in this repo.
+2. No legacy optional profile dependency in this repo.
 3. No gateway supervision/service management in this repo.
 4. Runtime data stored under OpenClaw home:
    - `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
@@ -17,8 +17,8 @@ Transform `rei-agent-orchestrator-starter` from bootstrap/scaffolding into a **f
 ---
 
 ## Current gap summary
-- Repo still contains Mission Control profile/install logic.
-- Repo still contains gateway systemd unit + references.
+- Repo still contains legacy optional profile profile/install logic.
+- Repo still contains gateway supervision references.
 - Runtime engine not implemented (DB writes, worker loop, dispatch lifecycle).
 - CI/PR loop not implemented as deterministic orchestration path.
 - Screenshot evidence gating not fully wired into completion criteria.
@@ -84,8 +84,8 @@ Transform `rei-agent-orchestrator-starter` from bootstrap/scaffolding into a **f
 ## Implementation phases
 
 ## Phase A — Hard reset (remove wrong scope)
-1. Remove Mission Control install/profile logic from installer and docs.
-2. Remove `clawdbot-gateway.service` file and all gateway-supervision references.
+1. Remove legacy optional profile install/profile logic from installer and docs.
+2. Remove `gateway service unit` file and all gateway-supervision references.
 3. Rewrite README to reflect orchestrator-only runtime product.
 4. Add explicit prerequisites check:
    - OpenClaw present
@@ -93,7 +93,7 @@ Transform `rei-agent-orchestrator-starter` from bootstrap/scaffolding into a **f
    - fail fast if missing
 
 **Exit criteria**
-- Repo has zero Mission Control references.
+- Repo has zero legacy optional profile references.
 - Repo has zero gateway service-management logic.
 
 ## Phase B — Runtime foundation
@@ -160,7 +160,7 @@ For each phase:
 Definition of done (global):
 - all phases complete
 - all acceptance tests green
-- no Mission Control/gateway service scope leakage in repo
+- no legacy optional profile/gateway service scope leakage in repo
 
 ---
 
