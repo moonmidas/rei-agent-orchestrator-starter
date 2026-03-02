@@ -1,35 +1,24 @@
 # Rei Agent Orchestrator Starter
 
-Orchestrator runtime bootstrap for machines that **already have OpenClaw installed and gateway running**.
+Orchestrator runtime bootstrap for machines that already have OpenClaw installed and gateway running.
 
-> Scope: orchestrator runtime only (no Mission Control installer, no gateway service supervision logic).
+## Current behavior
 
----
-
-## What this repo currently provides
-
-- SQLite-backed orchestration runtime (`plans`, `tasks`, `runs`, `approvals`, `events`, `artifacts`, `ci_checks`)
-- `/execute-plan` parser integration + atomic task persistence
-- Same-thread approval flow (`approve` and `approve-from-discord` polling bridge)
-- Dispatch engine with OpenClaw command adapter
-- CI polling integration and run/task transitions
-- Screenshot artifact capture command integration
-- Watchdog loop (`worker-tick`) + scheduler templates (systemd timer + launchd)
-- Install/bootstrap script and runtime doctor checks
-
----
-
-## Pre-requisites (hard requirements)
-
-The installer assumes these are already true:
-
-1. OpenClaw CLI is installed and usable by the target user.
-2. OpenClaw gateway is running and healthy.
-3. Target runtime user exists (default `clawdbot`).
-
-If any of these fail, installer exits with a clear error.
-
----
+- SQLite runtime: plans/tasks/runs/approvals/events/artifacts/ci_checks/dispatch_attempts
+- `/execute-plan` parsing + atomic task persistence
+- Approval: same-thread enforced for both manual and Discord-polled approval
+- Dispatch hardening:
+  - runtime capability probe (`openclaw agents list --json`)
+  - canonical dispatch command template (`runtime.openclawDispatch.command`)
+  - agent existence guard (default fallback `chad`)
+  - dispatch attempt persistence (run_id/session_key/raw response/error)
+- CI transitions with screenshot gate enforced on completion paths (including `ci-update`)
+- Discord milestone notifier states: queued, dispatched, waiting_ci, failed, completed/merged
+  - default destination: origin thread
+  - optional override: `discord.milestones.targetThreadId`
+  - dedupe key prevents duplicate milestone posts
+- Watchdog stale-run retry/escalation
+- Linux systemd timer + macOS launchd helper
 
 ## Install
 
@@ -37,129 +26,56 @@ If any of these fail, installer exits with a clear error.
 curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo bash
 ```
 
-### Installer behavior (actual)
+Linux installer now verifies `rei-orchestrator-worker.timer` is active before success.
 
-`install-orchestrator.sh`:
-1. verifies user exists (`APP_USER`, default `clawdbot`)
-2. verifies OpenClaw CLI can be found
-3. verifies gateway status (`openclaw gateway status`)
-4. installs OS deps (`git`, `curl`, `jq`, `build-essential`, `sqlite3`)
-5. clones/updates this repo to `APP_DIR` (default `/opt/rei-agent-orchestrator`)
-6. installs `/execute-plan` skill to `~/.openclaw/workspace/skills/execute-plan`
-7. bootstraps OpenClaw config template if missing
-8. bootstraps orchestrator config under `${OPENCLAW_HOME}/orchestrator/config.json`
-9. creates runtime dirs (`logs`, `artifacts`)
-10. checks for `chad` agent and **auto-adds it if missing**
-11. installs and enables Linux scheduler timer for worker loop
-12. runs doctor checks
-
----
-
-## Paths and defaults
-
-- `APP_DIR`: `/opt/rei-agent-orchestrator`
-- `APP_USER`: `clawdbot`
-- `OPENCLAW_HOME`: `/home/${APP_USER}/.openclaw`
-- DB path: `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
-
----
-
-## Verify runtime
+## Verify
 
 ```bash
-/opt/rei-agent-orchestrator/scripts/doctor.sh
+python3 -m unittest discover -s tests -v
+scripts/doctor.sh
+scripts/acceptance-e2e.sh
 ```
 
-Optional deeper checks:
+Mock acceptance is explicit opt-in only:
 
 ```bash
-PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli migrate
-PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli worker-tick
+scripts/acceptance-e2e.sh --mock
 ```
 
----
+## Acceptance preflight (real mode)
 
-## Core runtime commands
+`scripts/acceptance-e2e.sh` real mode fails fast unless all are healthy:
 
-```bash
-PYTHONPATH=. python3 -m src.orchestrator.cli migrate
-PYTHONPATH=. python3 -m src.orchestrator.cli execute-plan --thread-id <thread> --text '/execute-plan ...'
-PYTHONPATH=. python3 -m src.orchestrator.cli approve --plan-id <id> --thread-id <thread> --approver <user>
-PYTHONPATH=. python3 -m src.orchestrator.cli approve-from-discord --plan-id <id> --thread-id <thread>
-PYTHONPATH=. python3 -m src.orchestrator.cli dispatch-next --plan-id <id> --branch task/<id> --github-repo <owner/repo>
-PYTHONPATH=. python3 -m src.orchestrator.cli ci-poll --run-id <id> --branch <branch> --github-repo <owner/repo>
-PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick
-PYTHONPATH=. python3 -m src.orchestrator.cli capture-screenshot --task-id <id> --run-id <id> --url <url>
-```
-
----
-
-## Acceptance
-
-`acceptance-e2e.sh` supports two modes:
-
-- `ACCEPTANCE_MODE=real` (default): uses real OpenClaw dispatch command path
-- `ACCEPTANCE_MODE=mock`: mock fallback for isolated dev environments
-
-Run:
-
-```bash
-/opt/rei-agent-orchestrator/scripts/acceptance-e2e.sh
-```
-
----
+- `openclaw gateway status`
+- `gh auth status`
+- `chad` agent present
 
 ## Scheduler
 
-### Linux (auto-installed by installer)
+Linux:
 - `rei-orchestrator-worker.service`
 - `rei-orchestrator-worker.timer`
 
-Check:
+macOS helper:
 
 ```bash
-systemctl status rei-orchestrator-worker.timer
+scripts/install-launchd-macos.sh install
+scripts/install-launchd-macos.sh status
+scripts/install-launchd-macos.sh uninstall
 ```
 
-### macOS
-Use helper:
+## Release checklist
 
-```bash
-/opt/rei-agent-orchestrator/scripts/install-launchd-macos.sh
-```
+- [ ] `python3 -m unittest discover -s tests -v`
+- [ ] `scripts/doctor.sh`
+- [ ] `scripts/acceptance-e2e.sh` (real mode)
+- [ ] Optional: `scripts/acceptance-e2e.sh --mock`
+- [ ] Confirm milestone notifications in origin Discord thread
+- [ ] Confirm UI-task completion blocked without screenshot artifact
 
----
+## Known caveats
 
-## Known caveats (current)
-
-- `dispatch.commandTemplate` depends on OpenClaw CLI behavior/version in target environment.
-- `approve-from-discord` is polling-based via configurable fetch command (not event-stream subscription).
-- GitHub PR/CI flow requires `gh` auth in runtime environment.
-- Screenshot capture requires Playwright/CLI availability in runtime environment.
-
----
-
-## Included files
-
-- `install-orchestrator.sh`
-- `uninstall.sh`
-- `scripts/doctor.sh`
-- `scripts/doctor-runtime.sh`
-- `scripts/acceptance-e2e.sh`
-- `scripts/orchestrator-worker.sh`
-- `scripts/install-launchd-macos.sh`
-- `skills/execute-plan/*`
-- `templates/openclaw.orchestrator.example.json`
-- `templates/orchestrator.config.example.json`
-- `templates/orchestrator.db.schema.sql`
-- `templates/systemd/rei-orchestrator-worker.service`
-- `templates/systemd/rei-orchestrator-worker.timer`
-- `launchd/com.rei.orchestrator.worker.plist`
-
----
-
-## Uninstall
-
-```bash
-/opt/rei-agent-orchestrator/uninstall.sh
-```
+- Discord approval is polling-based (not event-stream push).
+- Dispatch and milestone posting depend on local OpenClaw CLI behavior/version.
+- GitHub workflows require `gh` authentication in runtime environment.
+- Screenshot capture requires configured command/tool availability (e.g., Playwright).
