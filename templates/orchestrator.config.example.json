@@ -1,46 +1,25 @@
 {
-  "version": 1,
-  "db": {
-    "path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"
-  },
+  "database": {"path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"},
   "routing": {
-    "map": {
-      "code": "chad"
-    },
-    "default": "chad",
-    "devFallback": "chad"
+    "map": {"code": "chad", "default": "chad"},
+    "devFallbackAgent": "chad"
   },
-  "execution": {
-    "maxParallel": 3,
-    "approval": {
-      "required": true,
-      "sameThreadOnly": true
-    },
-    "autoMergeDefault": false
-  },
-  "ci": {
-    "mode": "hybrid",
-    "pollIntervalSec": 30
-  },
-  "screenshots": {
-    "requiredForUiTasks": true,
-    "tool": "playwright"
-  },
-  "watchdog": {
-    "intervalSec": 60,
-    "retryOnce": true,
-    "escalateOnSecondFailure": true
-  },
-  "alerts": {
-    "default": "origin-thread"
+  "runtime": {
+    "openclawDispatch": {
+      "command": ["openclaw", "agent", "--agent", "{agent}", "--session-id", "orchestrator:{run_id}", "--message", "{dispatch_message}", "--json"]
+    }
   },
   "discord": {
     "approval": {
-      "keywords": ["approve", "approved", "go", "ship it"],
-      "fetchCommand": "openclaw message read --channel discord --target {thread_id} --limit 25"
+      "keywords": ["approve", "/approve", "lgtm", "ship it"],
+      "fetchCommand": ["openclaw", "message", "read", "--channel", "discord", "--target", "{thread_id}", "--limit", "{limit}"]
+    },
+    "milestones": {
+      "targetThreadId": null,
+      "sendCommand": ["openclaw", "message", "send", "--channel", "discord", "--target", "{thread_id}", "--message", "{message}"]
     }
   },
-  "dispatch": {
-    "commandTemplate": "openclaw agent --agent {agent} --session-id orchestrator:{run_id} --message {dispatch_message} --json"
+  "screenshot": {
+    "command": "npx playwright screenshot {url} {output}"
   }
 }

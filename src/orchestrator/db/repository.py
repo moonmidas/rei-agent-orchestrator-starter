@@ -57,9 +57,31 @@ class Repository:
 
     def attach_dispatch_session(self, run_id: str, session_key: str, dispatch_command: str, response: dict[str, Any]):
         self.conn.execute(
-            "UPDATE runs SET openclaw_session_key=?, dispatch_command=?, dispatch_response_json=?, updated_at=datetime('now') WHERE id=?",
+            "UPDATE runs SET openclaw_session_key=?, dispatch_command=?, dispatch_response_json=?, dispatch_error_json=NULL, updated_at=datetime('now') WHERE id=?",
             (session_key, dispatch_command, json.dumps(response, sort_keys=True), run_id),
         )
+        self.conn.commit()
+
+    def record_dispatch_attempt(self, run_id: str, attempted_agent: str, session_key: str | None = None, dispatch_command: str | None = None, response: dict[str, Any] | None = None, error: dict[str, Any] | None = None):
+        self.conn.execute(
+            """
+            INSERT INTO dispatch_attempts(run_id,attempted_agent,session_key,dispatch_command,dispatch_response_json,dispatch_error_json)
+            VALUES (?,?,?,?,?,?)
+            """,
+            (
+                run_id,
+                attempted_agent,
+                session_key,
+                dispatch_command,
+                json.dumps(response or {}, sort_keys=True),
+                json.dumps(error or {}, sort_keys=True),
+            ),
+        )
+        if error:
+            self.conn.execute(
+                "UPDATE runs SET dispatch_error_json=?, updated_at=datetime('now') WHERE id=?",
+                (json.dumps(error, sort_keys=True), run_id),
+            )
         self.conn.commit()
 
     def add_event(self, event_type: str, payload: dict[str, Any], plan_id: str | None = None, task_id: str | None = None, run_id: str | None = None):

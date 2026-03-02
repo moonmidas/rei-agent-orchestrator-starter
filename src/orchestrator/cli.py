@@ -54,12 +54,16 @@ def cmd_approve(args: argparse.Namespace) -> int:
 
 def cmd_approve_from_discord(args: argparse.Namespace) -> int:
     cfg, conn, repo = _repo(args)
-    row = conn.execute('select source_thread_id from plans where id=?', (args.plan_id,)).fetchone()
+    row = conn.execute('select source_thread_id, created_at from plans where id=?', (args.plan_id,)).fetchone()
     if not row:
         raise SystemExit('plan not found')
     source_thread_id = row['source_thread_id']
     bridge = DiscordApprovalBridge(cfg)
     result = bridge.poll_and_resolve(repo, args.plan_id, source_thread_id, args.thread_id, args.limit)
+    if not result.approved and args.timeout_seconds > 0:
+        age = conn.execute("select cast((julianday('now')-julianday(?))*86400 as int)", (row['created_at'],)).fetchone()[0]
+        if age >= args.timeout_seconds:
+            repo.add_event('plan.approval_timeout', {'age_seconds': age, 'timeout_seconds': args.timeout_seconds}, plan_id=args.plan_id)
     print(f'plan_id={args.plan_id}')
     print(f'approved={str(result.approved).lower()}')
     if result.approved:
@@ -164,6 +168,7 @@ def main() -> int:
     ad.add_argument('--plan-id', required=True)
     ad.add_argument('--thread-id', required=True, help='Discord thread/channel id to scan for approval messages')
     ad.add_argument('--limit', type=int, default=25)
+    ad.add_argument('--timeout-seconds', type=int, default=0, help='emit timeout escalation event when approval missing and plan age exceeds threshold')
     ad.set_defaults(func=cmd_approve_from_discord)
 
     dn = sub.add_parser('dispatch-next')

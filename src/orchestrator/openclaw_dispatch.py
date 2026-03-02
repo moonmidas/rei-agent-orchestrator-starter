@@ -12,6 +12,13 @@ class DispatchResult:
     raw: dict
 
 
+class DispatchError(RuntimeError):
+    def __init__(self, message: str, command: list[str], raw: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.command = command
+        self.raw = raw or {}
+
+
 def _replace_tokens(value: str, mapping: dict[str, str]) -> str:
     out = value
     for k, v in mapping.items():
@@ -22,16 +29,22 @@ def _replace_tokens(value: str, mapping: dict[str, str]) -> str:
 class OpenClawDispatchAdapter:
     def __init__(self, config: dict):
         self.config = config
+        self._probed = False
+        self._known_agents: set[str] = set()
 
-    def _build_command(self, task: dict, run_id: str, agent: str) -> list[str]:
-        runtime_cfg = self.config.get('runtime', {}).get('openclawDispatch', {})
-        base = runtime_cfg.get('command') or [
+    def _runtime_cfg(self) -> dict:
+        return self.config.get('runtime', {}).get('openclawDispatch', {})
+
+    def _canonical_command_template(self) -> list[str]:
+        return self._runtime_cfg().get('command') or [
             'openclaw', 'agent',
             '--agent', '{agent}',
             '--session-id', 'orchestrator:{run_id}',
             '--message', '{dispatch_message}',
             '--json',
         ]
+
+    def _build_command(self, task: dict, run_id: str, agent: str) -> list[str]:
         mapping = {
             'agent': agent,
             'run_id': run_id,
@@ -45,15 +58,44 @@ class OpenClawDispatchAdapter:
                 f"title={str(task.get('title') or '').strip()}"
             ).strip(),
         }
-        return [_replace_tokens(str(p), mapping) for p in base]
+        return [_replace_tokens(str(p), mapping) for p in self._canonical_command_template()]
+
+    def probe_capabilities(self) -> None:
+        if self._probed:
+            return
+        cp = subprocess.run(['openclaw', 'agents', 'list', '--json'], check=True, capture_output=True, text=True)
+        parsed = self._parse_output(cp.stdout)
+        agents = self._extract_agents(parsed)
+        if not agents:
+            raise ValueError('openclaw capability probe failed: no agents discovered from openclaw agents list --json')
+        self._known_agents = agents
+        self._probed = True
 
     def dispatch(self, task: dict, run_id: str, agent: str) -> DispatchResult:
-        cmd = self._build_command(task, run_id, agent)
-        cp = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        self.probe_capabilities()
+        effective_agent = (agent or self.config.get('routing', {}).get('devFallbackAgent') or 'chad').strip() or 'chad'
+        if effective_agent not in self._known_agents:
+            raise DispatchError(
+                f"dispatch blocked: agent '{effective_agent}' does not exist (known: {', '.join(sorted(self._known_agents))})",
+                [],
+                {'known_agents': sorted(self._known_agents), 'requested_agent': effective_agent},
+            )
+
+        cmd = self._build_command(task, run_id, effective_agent)
+        try:
+            cp = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raw_err = {
+                'stdout': (e.stdout or '').strip(),
+                'stderr': (e.stderr or '').strip(),
+                'returncode': e.returncode,
+            }
+            raise DispatchError('openclaw dispatch command failed', cmd, raw_err) from e
+
         raw = self._parse_output(cp.stdout)
         session_key = self._extract_session_key(raw)
         if not session_key:
-            raise ValueError('openclaw dispatch output missing session key/session id')
+            raise DispatchError('openclaw dispatch output missing session key/session id', cmd, raw)
         return DispatchResult(session_key=str(session_key), command=cmd, raw=raw)
 
     @staticmethod
@@ -90,6 +132,34 @@ class OpenClawDispatchAdapter:
         if out:
             return out
         return {'stdout': txt}
+
+    @staticmethod
+    def _extract_agents(raw: Any) -> set[str]:
+        out: set[str] = set()
+
+        def maybe_add(value: Any):
+            if isinstance(value, str) and value.strip():
+                out.add(value.strip())
+
+        def walk(value: Any):
+            if isinstance(value, dict):
+                if 'agents' in value and isinstance(value['agents'], list):
+                    for a in value['agents']:
+                        if isinstance(a, dict):
+                            maybe_add(a.get('id'))
+                            maybe_add(a.get('name'))
+                        else:
+                            maybe_add(a)
+                maybe_add(value.get('id'))
+                maybe_add(value.get('name'))
+                for v in value.values():
+                    walk(v)
+            elif isinstance(value, list):
+                for v in value:
+                    walk(v)
+
+        walk(raw)
+        return out
 
     @staticmethod
     def _extract_session_key(raw: Any) -> str | None:

@@ -63,6 +63,11 @@ install_scheduler_linux() {
 
   systemctl daemon-reload
   systemctl enable --now rei-orchestrator-worker.timer
+  if ! systemctl is-active --quiet rei-orchestrator-worker.timer; then
+    echo "ERROR: rei-orchestrator-worker.timer is not active after install"
+    systemctl status rei-orchestrator-worker.timer --no-pager || true
+    exit 1
+  fi
 }
 
 ensure_chad_agent() {

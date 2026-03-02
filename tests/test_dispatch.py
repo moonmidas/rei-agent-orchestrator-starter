@@ -6,6 +6,7 @@ from src.orchestrator.config import load_config
 from src.orchestrator.db.migrations import connect, run_migrations
 from src.orchestrator.db.repository import Repository
 from src.orchestrator.dispatch import DispatchEngine
+from src.orchestrator.openclaw_dispatch import DispatchError
 
 
 class _FakeGitHub:
@@ -32,6 +33,16 @@ class _FakeDispatchAdapter:
         return ' '.join(cmd)
 
 
+class _FailDispatchAdapter(_FakeDispatchAdapter):
+    def dispatch(self, task, run_id, agent):
+        raise DispatchError('boom', ['openclaw', 'agent'], {'stderr': 'x'})
+
+
+class _NoopNotifier:
+    def notify(self, *args, **kwargs):
+        return None
+
+
 class TestDispatch(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
@@ -44,7 +55,7 @@ class TestDispatch(unittest.TestCase):
         self.repo.approve_plan(self.plan, 'u1', 'th', 'approve')
         self.cfg = load_config(None)
         self.adapter = _FakeDispatchAdapter()
-        self.engine = DispatchEngine(self.repo, self.cfg, {'chad'}, dispatch_adapter=self.adapter)
+        self.engine = DispatchEngine(self.repo, self.cfg, {'chad'}, dispatch_adapter=self.adapter, notifier=_NoopNotifier())
 
     def tearDown(self):
         self.td.cleanup()
@@ -59,7 +70,7 @@ class TestDispatch(unittest.TestCase):
         self.assertTrue(run)
 
     def test_code_pr_autocreation_via_github(self):
-        engine = DispatchEngine(self.repo, self.cfg, {'chad'}, github_client=_FakeGitHub(), dispatch_adapter=self.adapter)
+        engine = DispatchEngine(self.repo, self.cfg, {'chad'}, github_client=_FakeGitHub(), dispatch_adapter=self.adapter, notifier=_NoopNotifier())
         run = engine.dispatch_task(self._task(self.code_task), branch_name='task/code')
         task = self.conn.execute('select pr_url from tasks where id=?', (self.code_task,)).fetchone()
         self.assertIn('github.com', task['pr_url'])
@@ -81,6 +92,11 @@ class TestDispatch(unittest.TestCase):
         status = self.conn.execute('select status from tasks where id=?', (self.ui_task,)).fetchone()[0]
         self.assertEqual(status, 'done')
 
+    def test_ui_ci_success_without_screenshot_is_blocked(self):
+        run = self.engine.dispatch_task(self._task(self.ui_task))
+        with self.assertRaises(ValueError):
+            self.engine.process_ci(run, [{'status': 'success', 'provider': 'gha', 'id': '1'}])
+
     def test_dispatch_idempotency_dedupe_key(self):
         row = self._task(self.ui_task)
         run1 = self.engine.dispatch_task(row)
@@ -97,6 +113,13 @@ class TestDispatch(unittest.TestCase):
         self.assertIn('session-', run['openclaw_session_key'])
         self.assertIn('openclaw agent', run['dispatch_command'])
         self.assertIn('session_key', run['dispatch_response_json'])
+
+    def test_dispatch_error_persists_attempt(self):
+        engine = DispatchEngine(self.repo, self.cfg, {'chad'}, dispatch_adapter=_FailDispatchAdapter(), notifier=_NoopNotifier())
+        with self.assertRaises(DispatchError):
+            engine.dispatch_task(self._task(self.ui_task))
+        attempt = self.conn.execute('select dispatch_error_json from dispatch_attempts order by id desc limit 1').fetchone()
+        self.assertIn('stderr', attempt['dispatch_error_json'])
 
 
 if __name__ == '__main__':
