@@ -36,6 +36,8 @@ def decompose_plan(plan_text: str) -> list[DecomposedTask]:
                 description=line,
                 work_type=infer_work_type(line),
                 depends_on=[i] if i > 0 else [],
+                # deterministic sequence dependency: each task waits on prior index
+
             )
         )
     return tasks
