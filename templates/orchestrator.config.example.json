@@ -67,16 +67,14 @@
     "openclawDispatch": {
       "command": [
         "openclaw",
-        "sessions",
-        "spawn",
+        "agent",
         "--agent",
         "{agent}",
-        "--label",
+        "--session-id",
         "orchestrator:{run_id}",
-        "--task-id",
-        "{task_id}",
-        "--plan-id",
-        "{plan_id}"
+        "--message",
+        "{dispatch_message}",
+        "--json"
       ]
     }
   }

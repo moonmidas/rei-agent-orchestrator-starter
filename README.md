@@ -38,7 +38,7 @@ Under `src/orchestrator/`:
 - Approval gate (`approve`) with thread-id checks
 - Discord inbound approval bridge (`approve-from-discord`) using configurable `openclaw message read` polling
   - enforces same-thread approval only
-- Dispatch with code-task PR enforcement via real OpenClaw CLI adapter (`openclaw sessions spawn` by default)
+- Dispatch with code-task PR enforcement via real OpenClaw CLI adapter (`openclaw agent --json` by default)
   - persists OpenClaw session linkage on `runs` (`openclaw_session_key`, command, raw response)
 - GitHub integration via `gh` CLI:
   - PR auto-create/check for code tasks (`dispatch-next` with configured repo)
@@ -55,7 +55,7 @@ Under `src/orchestrator/`:
 - Linux installer is production path; macOS uses a user-run helper (`scripts/install-launchd-macos.sh`) instead of a root cross-platform installer.
 - GitHub integration currently uses GitHub CLI (`gh`) and assumes repository auth is already configured.
 - Discord inbound approvals are poll-based (no webhook subscription in this package yet). Configure `discord.approval.fetchCommand` to match your OpenClaw message plugin wiring.
-- OpenClaw dispatch command is configurable at `runtime.openclawDispatch.command`; default assumes `openclaw sessions spawn` exists on installed OpenClaw CLI.
+- OpenClaw dispatch command is configurable at `runtime.openclawDispatch.command`; default uses `openclaw agent --agent {agent} --session-id orchestrator:{run_id} --message {dispatch_message} --json` and extracts session id from JSON or key/value output.
 
 ## Requirements
 
@@ -96,7 +96,8 @@ Optional runtime checks:
 ```bash
 PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli migrate
 PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli worker-tick
-/opt/rei-agent-orchestrator/scripts/acceptance-e2e.sh
+/opt/rei-agent-orchestrator/scripts/acceptance-e2e.sh               # REAL mode (default)
+ACCEPTANCE_MODE=mock /opt/rei-agent-orchestrator/scripts/acceptance-e2e.sh  # Optional mock mode
 ```
 
 ## Core CLI examples
