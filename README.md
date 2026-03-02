@@ -4,7 +4,6 @@ A production-oriented starter package to install an **OpenClaw orchestration sta
 
 - **Rei (`main`)** as orchestrator
 - **Chad (`chad`)** as dev executor
-- **Halbert (`halbert`)** as content executor
 
 This repo is focused on **installation + runtime bootstrap**.
 It supports two install profiles:
@@ -47,7 +46,7 @@ It supports two install profiles:
 ## Architecture at a glance
 
 - **Gateway**: OpenClaw gateway process, supervised by systemd
-- **Orchestrator**: Rei (`main`) routes work to Chad/Halbert
+- **Orchestrator**: Rei (`main`) routes work to configured worker agents (default: `chad`)
 - **Skill contract**: `/execute-plan` parser + dispatch contract shipped
 - **Optional** Mission Control: UI/DB runtime managed by PM2
 
@@ -60,7 +59,7 @@ These defaults are now locked for v1 scaffolding:
 - **DB default path:** `${OPENCLAW_HOME}/orchestrator/orchestrator.db` (`OPENCLAW_HOME` defaults to `~/.openclaw`)
 - **Approval location:** captured from the **same Discord thread** used for orchestrator milestone updates
 - **Auto-merge:** default **OFF** (must be explicitly enabled)
-- **Routing:** `routing.map` config is source of truth, with agent auto-discovery from roster and dev fallback to `chad`
+- **Routing:** `routing.map` config is source of truth, with agent auto-discovery from roster and dev fallback to `chad` (no content agent preinstalled by default)
 - **Schedulers by platform:** Linux uses `systemd` timer; macOS uses `launchd`
 
 Reference templates:
@@ -121,6 +120,7 @@ Set at minimum:
 - `gateway.auth.token`
 - Discord settings (if used): token + channel config
 - Agent roster/models if needed
+- Optional: add custom content/ops agents and map them in routing config
 
 Template:
 - `templates/openclaw.orchestrator.example.json`
