@@ -49,5 +49,12 @@ class TestDispatch(unittest.TestCase):
         self.assertEqual(status, 'done')
 
 
+
+    def test_dispatch_idempotency_dedupe_key(self):
+        row = self._task(self.ui_task)
+        run1 = self.engine.dispatch_task(row)
+        run2 = self.engine.dispatch_task(row)
+        self.assertEqual(run1, run2)
+
 if __name__ == '__main__':
     unittest.main()

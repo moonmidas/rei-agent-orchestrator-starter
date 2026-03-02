@@ -69,3 +69,9 @@ class Repository:
         )
         self.conn.commit()
         return artifact_id
+
+    def get_or_create_run(self, task_id: str, agent_id: str, dedupe_key: str, state: str = 'queued') -> str:
+        row = self.conn.execute('SELECT id FROM runs WHERE dedupe_key=?', (dedupe_key,)).fetchone()
+        if row:
+            return row[0]
+        return self.create_run(task_id, agent_id, dedupe_key, state)

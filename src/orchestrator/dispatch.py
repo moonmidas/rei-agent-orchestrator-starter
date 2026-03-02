@@ -14,8 +14,8 @@ class DispatchEngine:
         task = dict(task_row)
         ensure_branch_and_pr(task, branch_name, pr_url)
         agent = resolve_agent(task, self.config, self.available_agents)
-        dedupe = f"{task['id']}:{task['status']}"
-        run_id = self.repo.create_run(task['id'], agent, dedupe, 'running')
+        dedupe = f"dispatch:{task['id']}"
+        run_id = self.repo.get_or_create_run(task['id'], agent, dedupe, 'running')
         self.repo.add_event('run.dispatched', {'agent': agent}, task_id=task['id'], run_id=run_id, plan_id=task['plan_id'])
         if branch_name or pr_url:
             self.repo.conn.execute('update tasks set pr_url=?, status=\'in_progress\' where id=?', (pr_url, task['id']))
