@@ -1,69 +1,38 @@
 # Rei Agent Orchestrator Starter
 
-Orchestrator-only starter for OpenClaw environments.
+Orchestrator runtime package for existing OpenClaw installs.
 
-This repo installs one thing: the `execute-plan` skill and supporting templates into an existing OpenClaw setup. It does **not** install or manage gateway services.
+## Install from versioned URL
 
-## Scope
-
-What this starter does:
-- clones/updates this repository into `/opt/rei-agent-orchestrator` (default)
-- installs `skills/execute-plan` into `~/.openclaw/workspace/skills/execute-plan`
-- bootstraps `~/.openclaw/openclaw.json` from template if missing
-- runs `scripts/doctor.sh` checks
-
-What this starter does not do:
-- does not install OpenClaw for you
-- does not start/stop/restart gateway services
-- does not provide a full runtime orchestration engine yet (DB worker/dispatcher lifecycle still scaffold/template)
-
-## Hard prerequisites
-
-Before running installer:
-- `openclaw` CLI must be installed and in `PATH`
-- `openclaw gateway status` must succeed
-
-Installer fails fast if either prerequisite is missing.
-
-## Install
+Pin to an immutable tag (`v0.2.0` example):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/v0.2.0/install-orchestrator.sh | sudo bash
 ```
 
-## Post-install
+## Runtime defaults
 
-1. Edit `~/.openclaw/openclaw.json` with real tokens/secrets.
-2. Run doctor:
+- `OPENCLAW_HOME` default: `~/.openclaw`
+- Runtime home: `${OPENCLAW_HOME}/orchestrator`
+- DB path: `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
+- Entrypoint: `/execute-plan`
+- Approval: same Discord thread
+- Auto-merge default: off
+
+## Core commands
 
 ```bash
-/opt/rei-agent-orchestrator/scripts/doctor.sh
+PYTHONPATH=. python3 -m src.orchestrator.cli migrate
+PYTHONPATH=. python3 -m src.orchestrator.cli execute-plan --thread-id <thread> --text '/execute-plan ...'
+PYTHONPATH=. python3 -m src.orchestrator.cli approve --plan-id <id> --thread-id <thread> --approver <user>
+PYTHONPATH=. python3 -m src.orchestrator.cli dispatch-next --plan-id <id> --branch task/<id> --pr-url <url>
+PYTHONPATH=. python3 -m src.orchestrator.cli ci-update --run-id <id> --statuses pending,success
+PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick
 ```
 
-## Validate prerequisites manually
+## Validation
 
 ```bash
-openclaw --version
-openclaw gateway status
+./scripts/doctor.sh
+./scripts/acceptance-e2e.sh
 ```
-
-## Uninstall
-
-```bash
-/opt/rei-agent-orchestrator/uninstall.sh
-```
-
-## Included files
-
-- `install-orchestrator.sh`
-- `uninstall.sh`
-- `skills/execute-plan/*`
-- `scripts/doctor.sh`
-- `scripts/doctor-full.sh` (legacy helper script)
-- `templates/openclaw.orchestrator.example.json`
-- `templates/orchestrator.config.example.json`
-- `templates/orchestrator.db.schema.sql`
-
-## Status
-
-This repo is a starter/scaffold for orchestrator workflows. Phase A hard reset aligns package behavior to orchestrator-only installation and prerequisite validation.
