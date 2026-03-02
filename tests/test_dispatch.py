@@ -37,6 +37,7 @@ class TestDispatch(unittest.TestCase):
         run = self.engine.dispatch_task(self._task(self.code_task), branch_name='task/code', pr_url='https://example/pr/1')
         self.assertEqual(self.engine.process_ci(run, [{'status': 'pending'}]), 'waiting_ci')
         self.assertEqual(self.engine.process_ci(run, [{'status': 'success'}]), 'completed')
+        self.assertEqual(self.engine.process_ci(run, [{'status': 'failed'}]), 'failed')
 
     def test_ui_requires_screenshot_artifact(self):
         run = self.engine.dispatch_task(self._task(self.ui_task))
