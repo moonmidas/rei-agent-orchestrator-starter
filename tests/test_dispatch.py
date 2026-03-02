@@ -28,7 +28,7 @@ class TestDispatch(unittest.TestCase):
         return self.conn.execute('select * from tasks where id=?', (task_id,)).fetchone()
 
     def test_code_requires_branch_and_pr(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, 'branch creation'):
             self.engine.dispatch_task(self._task(self.code_task))
         run = self.engine.dispatch_task(self._task(self.code_task), branch_name='task/code', pr_url='https://example/pr/1')
         self.assertTrue(run)
