@@ -22,38 +22,54 @@ This repo now targets **orchestrator-only** scope (no Mission Control install, n
    - `${OPENCLAW_HOME}/orchestrator/`
    - `${OPENCLAW_HOME}/orchestrator/logs`
    - `${OPENCLAW_HOME}/orchestrator/artifacts`
-7. Runs healthcheck:
+7. **Installs and enables Linux scheduler wiring**:
+   - systemd service `rei-orchestrator-worker.service`
+   - systemd timer `rei-orchestrator-worker.timer`
+   - default cadence every 60s (`WORKER_INTERVAL_SECONDS` configurable)
+8. Runs healthcheck:
    - `scripts/doctor.sh`
 
-## What is implemented in runtime code
+## Runtime behavior now implemented
 
 Under `src/orchestrator/`:
 - SQLite migration runner
 - DB repository primitives (plans/tasks/runs/events/approvals/artifacts/ci_checks)
 - `/execute-plan` parse + plan/task creation flow
 - Approval gate (`approve`) with thread-id checks
-- Dispatch/routing/CI/watchdog module scaffolding + tests
+- Dispatch with code-task PR enforcement
+- GitHub integration via `gh` CLI:
+  - PR auto-create/check for code tasks (`dispatch-next` with configured repo)
+  - CI polling from GitHub Actions (`ci-poll`)
+  - CI results persisted in `ci_checks` and mapped to run/task states
+- Screenshot automation integration:
+  - `capture-screenshot` command path (Playwright-compatible command template)
+  - screenshot artifacts persisted to DB with metadata
 - CLI entrypoints:
-  - `migrate`, `execute-plan`, `approve`, `dispatch-next`, `ci-update`, `worker-tick`
+  - `migrate`, `execute-plan`, `approve`, `dispatch-next`, `ci-update`, `ci-poll`, `capture-screenshot`, `worker-tick`
 
-## What is NOT fully automated yet
+## Remaining caveats
 
-- No OS scheduler install wiring in installer yet (cron/launchd templates exist, not auto-installed).
-- No direct GitHub API PR/CI automation wiring yet (policy/state flow is scaffolded).
-- Screenshot requirement logic exists in runtime module, but full browser capture automation is not yet integrated in installer workflow.
+- Linux installer is production path; macOS uses a user-run helper (`scripts/install-launchd-macos.sh`) instead of a root cross-platform installer.
+- GitHub integration currently uses GitHub CLI (`gh`) and assumes repository auth is already configured.
 
 ## Requirements
 
 - OpenClaw installed and gateway already running
-- Linux host with `apt` for installer (`install-orchestrator.sh` is Linux-oriented today)
+- Linux host with `apt` for installer (`install-orchestrator.sh`)
 - `sudo` privileges
+- For GitHub automation: `gh` installed and authenticated
+- For screenshot automation: Playwright CLI available (default uses `npx playwright screenshot`)
 
-> macOS scheduler template exists (`launchd/`), but installer is not yet cross-platform.
-
-## Install
+## Install (Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo bash
+```
+
+## macOS scheduler install helper
+
+```bash
+APP_DIR=/opt/rei-agent-orchestrator INTERVAL_SECONDS=60 /opt/rei-agent-orchestrator/scripts/install-launchd-macos.sh
 ```
 
 ## Important env defaults
@@ -62,6 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-st
 - `APP_USER` default: `clawdbot`
 - `OPENCLAW_HOME` default: `/home/${APP_USER}/.openclaw`
 - DB default path: `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
+- Worker cadence default: 60s (`WORKER_INTERVAL_SECONDS`)
 
 ## Verify
 
@@ -83,8 +100,9 @@ PYTHONPATH=/opt/rei-agent-orchestrator python3 -m src.orchestrator.cli worker-ti
 PYTHONPATH=. python3 -m src.orchestrator.cli migrate
 PYTHONPATH=. python3 -m src.orchestrator.cli execute-plan --thread-id <thread> --text '/execute-plan ...'
 PYTHONPATH=. python3 -m src.orchestrator.cli approve --plan-id <id> --thread-id <thread> --approver <user>
-PYTHONPATH=. python3 -m src.orchestrator.cli dispatch-next --plan-id <id> --branch task/<id> --pr-url <url>
-PYTHONPATH=. python3 -m src.orchestrator.cli ci-update --run-id <id> --statuses pending,success
+PYTHONPATH=. python3 -m src.orchestrator.cli dispatch-next --plan-id <id> --branch task/<id> --github-repo owner/repo
+PYTHONPATH=. python3 -m src.orchestrator.cli ci-poll --run-id <id> --branch task/<id> --github-repo owner/repo
+PYTHONPATH=. python3 -m src.orchestrator.cli capture-screenshot --task-id <task-id> --run-id <run-id> --url https://example.com
 PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick
 ```
 
@@ -95,10 +113,13 @@ PYTHONPATH=. python3 -m src.orchestrator.cli worker-tick
 - `scripts/doctor.sh`
 - `scripts/doctor-runtime.sh`
 - `scripts/acceptance-e2e.sh`
+- `scripts/install-launchd-macos.sh`
 - `skills/execute-plan/*`
 - `templates/openclaw.orchestrator.example.json`
 - `templates/orchestrator.config.example.json`
 - `templates/orchestrator.db.schema.sql`
+- `templates/systemd/rei-orchestrator-worker.service`
+- `templates/systemd/rei-orchestrator-worker.timer`
 - `templates/scheduler/orchestrator.cron.example`
 - `launchd/com.rei.orchestrator.worker.plist`
 
