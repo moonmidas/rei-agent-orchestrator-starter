@@ -6,6 +6,7 @@ from .db.migrations import connect, run_migrations
 from .db.repository import Repository
 from .plan_service import PlanService
 from .dispatch import DispatchEngine
+from .watchdog import Watchdog
 
 
 def _repo(args):
@@ -67,6 +68,14 @@ def cmd_ci_update(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_worker_tick(args: argparse.Namespace) -> int:
+    _, _, repo = _repo(args)
+    wd = Watchdog(repo, stale_minutes=args.stale_minutes)
+    count = wd.run_tick()
+    print(f'stale_processed={count}')
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog='orchestrator')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -102,6 +111,11 @@ def main() -> int:
     cu.add_argument('--run-id', required=True)
     cu.add_argument('--statuses', required=True, help='comma-separated: pending,success,failed')
     cu.set_defaults(func=cmd_ci_update)
+
+    wt = sub.add_parser('worker-tick')
+    wt.add_argument('--config')
+    wt.add_argument('--stale-minutes', type=int, default=5)
+    wt.set_defaults(func=cmd_worker_tick)
 
     args = parser.parse_args()
     return args.func(args)
