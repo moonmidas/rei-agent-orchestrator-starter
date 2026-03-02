@@ -4,15 +4,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 export PYTHONPATH="$ROOT"
+MODE="${ACCEPTANCE_MODE:-real}" # real (default) | mock
 
 mkdir -p "$OPENCLAW_HOME/orchestrator"
-TMP_BIN="$(mktemp -d)"
-TMP_MESSAGES="$(mktemp)"
-cat > "$TMP_BIN/openclaw" <<'SH'
+
+TMP_BIN=""
+TMP_MESSAGES=""
+if [[ "$MODE" == "mock" ]]; then
+  TMP_BIN="$(mktemp -d)"
+  TMP_MESSAGES="$(mktemp)"
+  cat > "$TMP_BIN/openclaw" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${1:-}" == "sessions" && "${2:-}" == "spawn" ]]; then
-  echo "session_key=session-acceptance-${RANDOM}"
+if [[ "${1:-}" == "agent" ]]; then
+  echo '{"status":"ok","result":{"meta":{"agentMeta":{"sessionId":"session-acceptance-'"${RANDOM}"'"}}}}'
   exit 0
 fi
 if [[ "${1:-}" == "message" && "${2:-}" == "read" ]]; then
@@ -21,20 +26,33 @@ if [[ "${1:-}" == "message" && "${2:-}" == "read" ]]; then
 fi
 echo "unsupported fake openclaw invocation: $*" >&2
 exit 2
-SH
-chmod +x "$TMP_BIN/openclaw"
-export PATH="$TMP_BIN:$PATH"
-export OPENCLAW_FAKE_MESSAGES_FILE="$TMP_MESSAGES"
+MOCK
+  chmod +x "$TMP_BIN/openclaw"
+  export PATH="$TMP_BIN:$PATH"
+  export OPENCLAW_FAKE_MESSAGES_FILE="$TMP_MESSAGES"
+else
+  command -v openclaw >/dev/null
+  openclaw gateway status >/dev/null
+fi
 
 cat > "$OPENCLAW_HOME/orchestrator/config.acceptance.json" <<'JSON'
 {
   "database": {"path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"},
   "routing": {"map": {"code": "chad", "default": "chad"}, "devFallbackAgent": "chad"},
-  "discord": {"approval": {"keywords": ["approve"]}},
-  "runtime": {"openclawDispatch": {"command": ["openclaw", "sessions", "spawn", "--agent", "{agent}", "--label", "orchestrator:{run_id}"]}}
+  "discord": {
+    "approval": {
+      "keywords": ["approve"],
+      "fetchCommand": ["openclaw", "message", "read", "--channel", "discord", "--target", "{thread_id}", "--limit", "{limit}"]
+    }
+  },
+  "runtime": {
+    "openclawDispatch": {
+      "command": ["openclaw", "agent", "--agent", "{agent}", "--session-id", "orchestrator:{run_id}", "--message", "{dispatch_message}", "--json"]
+    }
+  }
 }
 JSON
-# resolve OPENCLAW_HOME token in-place
+
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser(os.path.join(os.environ['OPENCLAW_HOME'], 'orchestrator', 'config.acceptance.json'))
@@ -48,8 +66,12 @@ PLAN_OUT=$(python3 -m src.orchestrator.cli execute-plan --config "$OPENCLAW_HOME
 echo "$PLAN_OUT"
 PLAN_ID=$(echo "$PLAN_OUT" | awk -F= '/plan_id/{print $2}')
 
-echo '[{"id":"msg-1","thread_id":"acceptance-thread","author_id":"acceptance-bot","content":"approve"}]' > "$TMP_MESSAGES"
-APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve-from-discord --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread)
+if [[ "$MODE" == "mock" ]]; then
+  echo '[{"id":"msg-1","thread_id":"acceptance-thread","author_id":"acceptance-bot","content":"approve"}]' > "$TMP_MESSAGES"
+  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve-from-discord --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread)
+else
+  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread --approver acceptance-real --text approve)
+fi
 echo "$APPROVAL_OUT"
 
 RUN_OUT=$(python3 -m src.orchestrator.cli dispatch-next --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --branch "task/${PLAN_ID}" --pr-url "https://example.invalid/pr/${PLAN_ID}")
@@ -62,11 +84,11 @@ EVIDENCE=$(python3 - <<PY
 import sqlite3, os, json
 conn=sqlite3.connect(os.path.join(os.environ['OPENCLAW_HOME'],'orchestrator','orchestrator.db'))
 conn.row_factory=sqlite3.Row
-run=conn.execute('select id, openclaw_session_key, state from runs where id=?', ('${RUN_ID}',)).fetchone()
+run=conn.execute('select id, openclaw_session_key, state, dispatch_command from runs where id=?', ('${RUN_ID}',)).fetchone()
 events=[dict(r) for r in conn.execute('select event_type from events where run_id=? order by id', ('${RUN_ID}',)).fetchall()]
-print(json.dumps({'run_id': run['id'], 'session_key': run['openclaw_session_key'], 'state': run['state'], 'events': [e['event_type'] for e in events]}))
+print(json.dumps({'mode': '${MODE}', 'run_id': run['id'], 'session_key': run['openclaw_session_key'], 'state': run['state'], 'dispatch_command': run['dispatch_command'], 'events': [e['event_type'] for e in events]}))
 PY
 )
 
 echo "EVIDENCE=$EVIDENCE"
-echo "ACCEPTANCE_E2E_OK plan=$PLAN_ID run=$RUN_ID"
+echo "ACCEPTANCE_E2E_OK mode=$MODE plan=$PLAN_ID run=$RUN_ID"

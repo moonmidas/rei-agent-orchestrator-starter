@@ -22,7 +22,7 @@ class _FakeDispatchAdapter:
 
         class R:
             session_key = f'session-{run_id}'
-            command = ['openclaw', 'sessions', 'spawn']
+            command = ['openclaw', 'agent', '--json']
             raw = {'session_key': session_key}
 
         return R()
@@ -95,7 +95,7 @@ class TestDispatch(unittest.TestCase):
             (run_id,),
         ).fetchone()
         self.assertIn('session-', run['openclaw_session_key'])
-        self.assertIn('openclaw sessions spawn', run['dispatch_command'])
+        self.assertIn('openclaw agent', run['dispatch_command'])
         self.assertIn('session_key', run['dispatch_response_json'])
 
 
