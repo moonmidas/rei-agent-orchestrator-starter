@@ -29,8 +29,11 @@ class DispatchEngine:
         self.repo.add_event('ci.updated', {'state': state}, run_id=run_id)
         return mapped
 
-    def complete_task(self, task_row, artifacts: list[dict]):
+    def complete_task(self, task_row, artifacts: list[dict] | None = None):
         task = dict(task_row)
+        if artifacts is None:
+            rows = self.repo.conn.execute('select artifact_type from artifacts where task_id=?', (task['id'],)).fetchall()
+            artifacts = [dict(r) for r in rows]
         assert_required_artifacts(task, artifacts)
         self.repo.conn.execute("update tasks set status='done', completed_at=datetime('now') where id=?", (task['id'],))
         self.repo.conn.commit()

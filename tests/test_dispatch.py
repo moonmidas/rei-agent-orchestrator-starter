@@ -44,7 +44,7 @@ class TestDispatch(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.engine.complete_task(self._task(self.ui_task), [])
         self.repo.add_artifact(self.ui_task, 'screenshot', '/tmp/shot.png', run)
-        self.engine.complete_task(self._task(self.ui_task), [{'artifact_type': 'screenshot'}])
+        self.engine.complete_task(self._task(self.ui_task))
         status = self.conn.execute('select status from tasks where id=?', (self.ui_task,)).fetchone()[0]
         self.assertEqual(status, 'done')
 
