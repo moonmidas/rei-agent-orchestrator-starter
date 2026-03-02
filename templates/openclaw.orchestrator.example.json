@@ -25,16 +25,12 @@
         "default": true,
         "model": "openai-codex/gpt-5.3-codex",
         "subagents": {
-          "allowAgents": ["chad", "halbert"]
+          "allowAgents": ["chad"]
         }
       },
       {
         "id": "chad",
         "model": "openai-codex/gpt-5.3-codex"
-      },
-      {
-        "id": "halbert",
-        "model": "opencode/kimi-k2.5-free"
       }
     ]
   }

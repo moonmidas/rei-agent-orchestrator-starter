@@ -1,81 +1,46 @@
 {
-  "openclawHome": "${OPENCLAW_HOME}",
-  "database": {
+  "version": 1,
+  "db": {
     "path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"
-  },
-  "discord": {
-    "approval": {
-      "mode": "same_thread",
-      "keywords": [
-        "approve",
-        "/approve",
-        "lgtm"
-      ],
-      "fetchCommand": [
-        "openclaw",
-        "message",
-        "read",
-        "--channel",
-        "discord",
-        "--target",
-        "{thread_id}",
-        "--limit",
-        "{limit}"
-      ]
-    },
-    "notifications": {
-      "milestones": true
-    }
-  },
-  "merge": {
-    "autoMerge": false,
-    "requireGreenChecks": true,
-    "requireApproval": true
   },
   "routing": {
     "map": {
-      "code": "chad",
-      "content": "halbert"
+      "code": "chad"
     },
-    "allowTargetOverride": true,
-    "agentAutoDiscovery": true,
-    "devFallbackAgent": "chad"
+    "default": "chad",
+    "devFallback": "chad"
   },
-  "scheduler": {
-    "linux": {
-      "mode": "systemd-timer",
-      "service": "rei-orchestrator-worker.service",
-      "timer": "rei-orchestrator-worker.timer",
-      "intervalSeconds": 60
+  "execution": {
+    "maxParallel": 3,
+    "approval": {
+      "required": true,
+      "sameThreadOnly": true
     },
-    "macos": {
-      "mode": "launchd",
-      "label": "com.rei.orchestrator.worker",
-      "plist": "~/Library/LaunchAgents/com.rei.orchestrator.worker.plist",
-      "intervalSeconds": 60
+    "autoMergeDefault": false
+  },
+  "ci": {
+    "mode": "hybrid",
+    "pollIntervalSec": 30
+  },
+  "screenshots": {
+    "requiredForUiTasks": true,
+    "tool": "playwright"
+  },
+  "watchdog": {
+    "intervalSec": 60,
+    "retryOnce": true,
+    "escalateOnSecondFailure": true
+  },
+  "alerts": {
+    "default": "origin-thread"
+  },
+  "discord": {
+    "approval": {
+      "keywords": ["approve", "approved", "go", "ship it"],
+      "fetchCommand": "openclaw message read --channel discord --target {thread_id} --limit 25"
     }
   },
-  "github": {
-    "repo": "owner/repo",
-    "baseBranch": "main",
-    "requirePrForCodeTasks": true
-  },
-  "screenshot": {
-    "command": "npx playwright screenshot {url} {output}"
-  },
-  "runtime": {
-    "openclawDispatch": {
-      "command": [
-        "openclaw",
-        "agent",
-        "--agent",
-        "{agent}",
-        "--session-id",
-        "orchestrator:{run_id}",
-        "--message",
-        "{dispatch_message}",
-        "--json"
-      ]
-    }
+  "dispatch": {
+    "commandTemplate": "openclaw agent --agent {agent} --session-id orchestrator:{run_id} --message {dispatch_message} --json"
   }
 }
