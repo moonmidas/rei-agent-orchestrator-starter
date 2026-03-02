@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Rei Orchestrator Worker every {{INTERVAL_SECONDS}}s
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec={{INTERVAL_SECONDS}}s
+AccuracySec=1s
+Unit=rei-orchestrator-worker.service
+
+[Install]
+WantedBy=timers.target
