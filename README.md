@@ -19,15 +19,9 @@ It currently provides install/runtime scaffolding for OpenClaw orchestration and
 5. Clones/updates this starter repo into `/opt/rei-agent-orchestrator`.
 6. Installs the `execute-plan` skill into:
    - `~/.openclaw/workspace/skills/execute-plan`
-7. Installs systemd unit file:
-   - `clawdbot-gateway.service`
-   - then runs: `daemon-reload`, `enable`, `restart`.
-8. If `~/.openclaw/openclaw.json` does not exist, copies template:
+7. If `~/.openclaw/openclaw.json` does not exist, copies template:
    - `templates/openclaw.orchestrator.example.json`
-9. Optional full profile (`INSTALL_MISSION_CONTROL=true`):
-   - clones/builds Mission Control
-   - starts it with PM2 on port `3005`
-   - runs `scripts/doctor-full.sh`.
+8. Runs `scripts/doctor.sh` for post-install verification.
 
 ---
 
@@ -35,7 +29,6 @@ It currently provides install/runtime scaffolding for OpenClaw orchestration and
 
 - `install-orchestrator.sh`
 - `uninstall.sh`
-- `systemd-clawdbot-gateway.service`
 - `skills/execute-plan/*`
 - `templates/openclaw.orchestrator.example.json`
 - `templates/orchestrator.config.example.json` (spec template)
@@ -97,11 +90,7 @@ Mission Control env overrides:
 ## Required post-install user steps
 
 1. Edit `~/.openclaw/openclaw.json` with real secrets/tokens.
-2. Restart gateway:
-   ```bash
-   sudo /bin/systemctl restart clawdbot-gateway
-   ```
-3. Run doctor:
+2. Run doctor:
    - Orchestrator-only:
      ```bash
      /opt/rei-agent-orchestrator/scripts/doctor.sh
@@ -118,8 +107,7 @@ Mission Control env overrides:
 Gateway:
 
 ```bash
-sudo /bin/systemctl status clawdbot-gateway
-sudo /bin/systemctl restart clawdbot-gateway
+openclaw gateway status
 ```
 
 Mission Control (if full profile):
@@ -134,20 +122,11 @@ pm2 logs mission-control
 
 ## Troubleshooting
 
-### “bad unit file setting”
-Reinstall service file from repo and reload daemon:
-
-```bash
-sudo install -m 0644 /opt/rei-agent-orchestrator/systemd-clawdbot-gateway.service /etc/systemd/system/clawdbot-gateway.service
-sudo systemctl daemon-reload
-sudo systemctl restart clawdbot-gateway
-```
-
 ### Proxy warning (`untrusted address`)
 
 ```bash
 openclaw config set gateway.trustedProxies '["127.0.0.1","::1"]'
-sudo /bin/systemctl restart clawdbot-gateway
+openclaw gateway restart
 ```
 
 ---
