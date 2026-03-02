@@ -1,0 +1,41 @@
+{
+  "gateway": {
+    "auth": {
+      "token": "REPLACE_WITH_RANDOM_TOKEN"
+    },
+    "trustedProxies": ["127.0.0.1", "::1"],
+    "controlUi": {
+      "enabled": true,
+      "dangerouslyDisableDeviceAuth": false
+    }
+  },
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "botToken": "REPLACE_WITH_DISCORD_BOT_TOKEN",
+      "threadBindings": {
+        "spawnSubagentSessions": true
+      }
+    }
+  },
+  "agents": {
+    "list": [
+      {
+        "id": "main",
+        "default": true,
+        "model": "openai-codex/gpt-5.3-codex",
+        "subagents": {
+          "allowAgents": ["chad", "halbert"]
+        }
+      },
+      {
+        "id": "chad",
+        "model": "openai-codex/gpt-5.3-codex"
+      },
+      {
+        "id": "halbert",
+        "model": "opencode/kimi-k2.5-free"
+      }
+    ]
+  }
+}

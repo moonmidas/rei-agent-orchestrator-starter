@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenClaw Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=clawdbot
+Group=clawdbot
+WorkingDirectory=/home/clawdbot
+Environment=NODE_ENV=production
+Environment=PATH=/home/clawdbot/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/clawdbot/.npm-global/bin/openclaw gateway run --force
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
