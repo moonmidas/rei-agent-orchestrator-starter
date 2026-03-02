@@ -11,27 +11,36 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "Install profile: orchestrator-only"
+require_openclaw() {
+  if ! command -v openclaw >/dev/null 2>&1; then
+    echo "ERROR: openclaw CLI is required but not found in PATH."
+    echo "Install OpenClaw first, then re-run this installer."
+    exit 1
+  fi
+}
 
-echo "[1/6] install dependencies"
+require_gateway() {
+  if ! openclaw gateway status >/dev/null 2>&1; then
+    echo "ERROR: OpenClaw gateway is unreachable."
+    echo "Start/fix gateway first, then re-run this installer."
+    exit 1
+  fi
+}
+
+echo "Install profile: orchestrator-only"
+echo "[preflight] checking prerequisites"
+require_openclaw
+require_gateway
+
+echo "[1/5] install dependencies"
 apt-get update -y
 apt-get install -y git curl jq build-essential sqlite3
-
-if ! command -v node >/dev/null 2>&1; then
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt-get install -y nodejs
-fi
 
 if ! id "$APP_USER" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$APP_USER"
 fi
 
-echo "[2/6] install openclaw + pm2"
-sudo -u "$APP_USER" mkdir -p /home/$APP_USER/.npm-global
-sudo -u "$APP_USER" npm config set prefix /home/$APP_USER/.npm-global
-sudo -u "$APP_USER" env PATH="/home/$APP_USER/.npm-global/bin:$PATH" npm i -g @openclaw/openclaw pm2
-
-echo "[3/6] fetch starter repo"
+echo "[2/5] fetch starter repo"
 if [[ -d "$APP_DIR/.git" ]]; then
   git -C "$APP_DIR" fetch origin "$BRANCH"
   git -C "$APP_DIR" checkout "$BRANCH"
@@ -42,20 +51,20 @@ else
 fi
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
-echo "[4/6] install execute-plan skill"
+echo "[3/5] install execute-plan skill"
 SKILL_DST="/home/$APP_USER/.openclaw/workspace/skills/execute-plan"
 mkdir -p "$SKILL_DST"
 cp -r "$APP_DIR/skills/execute-plan/"* "$SKILL_DST/"
 chown -R "$APP_USER":"$APP_USER" "/home/$APP_USER/.openclaw/workspace/skills"
 
-echo "[5/6] openclaw config bootstrap (if missing)"
+echo "[4/5] openclaw config bootstrap (if missing)"
 if [[ ! -f /home/$APP_USER/.openclaw/openclaw.json ]]; then
   mkdir -p /home/$APP_USER/.openclaw
   cp "$APP_DIR/templates/openclaw.orchestrator.example.json" /home/$APP_USER/.openclaw/openclaw.json
   chown -R "$APP_USER":"$APP_USER" /home/$APP_USER/.openclaw
 fi
 
-echo "[6/6] post-install checks"
+echo "[5/5] post-install checks"
 "$APP_DIR/scripts/doctor.sh"
 
 echo "done"
