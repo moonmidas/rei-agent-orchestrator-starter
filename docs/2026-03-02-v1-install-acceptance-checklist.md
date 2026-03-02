@@ -10,12 +10,17 @@
 - [ ] `install-orchestrator.sh` runs cleanly
 - [ ] `clawdbot-gateway` active under systemd
 - [ ] orchestrator worker service active (if split process)
-- [ ] DB created + migrations applied
+- [ ] DB created + migrations applied at `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
+- [ ] scheduler installed for platform:
+  - [ ] Linux `systemd` timer
+  - [ ] macOS `launchd` plist
 
 ## Config validation
 - [ ] `gateway.trustedProxies` set
 - [ ] `channels.discord.threadBindings.spawnSubagentSessions` explicitly set
 - [ ] agent roster includes `main`, `chad`, `halbert`
+- [ ] `routing.map` configured for code/content
+- [ ] auto-discovery enabled (or explicitly disabled) and documented
 - [ ] execute-plan skill present in workspace
 
 ## Functional smoke tests
@@ -24,10 +29,11 @@
 - [ ] One content task dispatches Halbert and creates task+run rows
 - [ ] CI/PR status updates run state
 - [ ] At least one milestone notification appears in Discord
+- [ ] Approval command/event in same Discord thread transitions review gate
 - [ ] Logs/live feed/history surfaces show events
 
 ## Failure-mode tests
 - [ ] Simulated failed run transitions to failed + retry
 - [ ] Duplicate dispatch input does not create duplicate active run
 - [ ] Restart services and verify state recovery from DB
-
+- [ ] Verify auto-merge remains OFF by default

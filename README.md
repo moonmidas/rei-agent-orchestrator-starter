@@ -53,6 +53,22 @@ It supports two install profiles:
 
 ---
 
+## Finalized v1 decisions
+
+These defaults are now locked for v1 scaffolding:
+
+- **DB default path:** `${OPENCLAW_HOME}/orchestrator/orchestrator.db` (`OPENCLAW_HOME` defaults to `~/.openclaw`)
+- **Approval location:** captured from the **same Discord thread** used for orchestrator milestone updates
+- **Auto-merge:** default **OFF** (must be explicitly enabled)
+- **Routing:** `routing.map` config is source of truth, with agent auto-discovery from roster and dev fallback to `chad`
+- **Schedulers by platform:** Linux uses `systemd` timer; macOS uses `launchd`
+
+Reference templates:
+- `templates/orchestrator.config.example.json`
+- `templates/orchestrator.db.schema.sql`
+
+---
+
 ## Prerequisites
 
 - Ubuntu/Debian-like Linux with `sudo`
@@ -108,6 +124,8 @@ Set at minimum:
 
 Template:
 - `templates/openclaw.orchestrator.example.json`
+- `templates/orchestrator.config.example.json`
+- `templates/orchestrator.db.schema.sql`
 
 ### B) Restart gateway after config edits
 
