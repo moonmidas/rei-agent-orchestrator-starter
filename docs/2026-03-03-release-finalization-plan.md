@@ -92,14 +92,14 @@ This plan replaces prior plan docs and is now the single active release plan.
   - no milestone payload errors.
 
 ### D-01 Publish code changes
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Move local release-go-blockers work to remote and review path.
 - **Done when:**
   - branch pushed
   - PR opened to `main` with evidence checklist.
 
 ### D-02 Merge and release tag
-- **Status:** todo
+- **Status:** blocked (awaiting PR #10 merge before tagging)
 - **Goal:** Finalize releasable state and immutable version marker.
 - **Files/metadata:**
   - `docs/releases/v0.2.0.md`
@@ -109,7 +109,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - `v0.2.0` tag created + pushed.
 
 ### D-03 Post-merge install sanity check
-- **Status:** todo
+- **Status:** blocked (pending merge + tag from D-02)
 - **Goal:** Confirm install command from `main` matches shipped behavior.
 - **Done when:**
   - fresh install smoke succeeds on target host profile
