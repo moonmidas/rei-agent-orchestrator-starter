@@ -35,7 +35,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - captured artifact path matches DB/runtime conventions.
 
 ### A-03 Add regression checks for path consistency
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Prevent future drift between config defaults, CLI defaults, and doctor/runtime expectations.
 - **Files:**
   - `tests/test_config.py` (new)
