@@ -1,5 +1,5 @@
 {
-  "database": {"path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"},
+  "database": {"path": "${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db"},
   "routing": {
     "map": {"code": "chad", "default": "chad"},
     "devFallbackAgent": "chad"
