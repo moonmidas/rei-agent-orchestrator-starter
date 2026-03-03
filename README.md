@@ -28,8 +28,13 @@ Linux installer checks `rei-orchestrator-worker.timer` activation on Linux hosts
 ```bash
 python3 -m unittest discover -s tests -v
 scripts/doctor.sh
+scripts/doctor-runtime.sh
+scripts/acceptance-e2e.sh --mock
 scripts/acceptance-e2e.sh --real-local
+scripts/acceptance-e2e.sh --real-discord --thread-id <discord_thread_id>
 ```
+
+`scripts/doctor-runtime.sh` runs `migrate`, confirms the DB lives at `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db`, and proves every required table exists before you ship.
 
 Acceptance modes are explicit:
 
@@ -40,7 +45,7 @@ scripts/acceptance-e2e.sh --mock
 # Real runtime, local no-op milestone sender (default if no mode flag)
 scripts/acceptance-e2e.sh --real-local
 
-# Full Discord-integrated acceptance
+# Full Discord-integrated acceptance (requires send permission in the target thread)
 scripts/acceptance-e2e.sh --real-discord --thread-id <discord_thread_id>
 ```
 
@@ -72,9 +77,10 @@ scripts/install-launchd-macos.sh uninstall
 
 - [ ] `python3 -m unittest discover -s tests -v`
 - [ ] `scripts/doctor.sh`
+- [ ] `scripts/doctor-runtime.sh`
+- [ ] `scripts/acceptance-e2e.sh --mock`
 - [ ] `scripts/acceptance-e2e.sh --real-local`
 - [ ] `scripts/acceptance-e2e.sh --real-discord --thread-id <discord_thread_id>`
-- [ ] Optional: `scripts/acceptance-e2e.sh --mock`
 - [ ] Confirm milestone notifications in origin Discord thread
 - [ ] Confirm UI-task completion blocked without screenshot artifact
 

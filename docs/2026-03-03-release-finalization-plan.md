@@ -53,7 +53,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - one scripted dry run proves expected path layout end-to-end.
 
 ### B-01 Align README with final runtime behavior
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Ensure README claims map to validated behavior only.
 - **Files:**
   - `README.md`
