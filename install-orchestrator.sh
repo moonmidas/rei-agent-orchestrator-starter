@@ -18,6 +18,17 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
+
+validate_openclaw_home() {
+  case "$OPENCLAW_HOME" in
+    */.openclaw)
+      echo "ERROR: OPENCLAW_HOME must be the user home base (e.g. /home/$APP_USER), not the .openclaw directory."
+      echo "Fix: export OPENCLAW_HOME=/home/$APP_USER"
+      exit 1
+      ;;
+  esac
+}
+
 resolve_openclaw_bin() {
   if command -v "$OPENCLAW_BIN" >/dev/null 2>&1; then
     OPENCLAW_BIN=$(command -v "$OPENCLAW_BIN")
@@ -107,6 +118,7 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
 fi
 
 echo "[preflight] checking prerequisites"
+validate_openclaw_home
 resolve_openclaw_bin
 require_gateway
 
