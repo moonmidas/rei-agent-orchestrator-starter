@@ -44,7 +44,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - tests fail on old path behavior and pass on corrected behavior.
 
 ### A-04 Verify clean-home bootstrap behavior
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Confirm fresh env (`OPENCLAW_HOME=/tmp/...`) produces expected config + DB + artifacts locations.
 - **Files:**
   - `scripts/doctor-runtime.sh` (only if needed)
