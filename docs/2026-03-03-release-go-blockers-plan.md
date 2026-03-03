@@ -127,7 +127,7 @@ Close the release blockers found in the repo audit so `rei-agent-orchestrator-st
   - deferred gaps (e.g., superpowers adapter) are explicitly marked as deferred/out-of-scope.
 
 ### E-03 Release metadata integrity
-- **Status:** todo
+- **Status:** done
 - **Goal:** Ensure rollback docs and release notes reference real tags/versions.
 - **Files:**
   - `docs/rollback.md`
