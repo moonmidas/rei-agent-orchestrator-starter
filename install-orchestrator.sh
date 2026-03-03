@@ -8,14 +8,26 @@ BRANCH=${BRANCH:-main}
 WORKER_INTERVAL_SECONDS=${WORKER_INTERVAL_SECONDS:-60}
 CHAD_MODEL=${CHAD_MODEL:-openai-codex/gpt-5.3-codex}
 
-OPENCLAW_HOME=${OPENCLAW_HOME:-/home/$APP_USER/.openclaw}
-ORCH_HOME="$OPENCLAW_HOME/orchestrator"
+OPENCLAW_HOME=${OPENCLAW_HOME:-/home/$APP_USER}
+OPENCLAW_DATA_DIR="$OPENCLAW_HOME/.openclaw"
+ORCH_HOME="$OPENCLAW_DATA_DIR/orchestrator"
 OPENCLAW_BIN=${OPENCLAW_BIN:-openclaw}
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run as root (sudo bash install-orchestrator.sh)"
   exit 1
 fi
+
+
+validate_openclaw_home() {
+  case "$OPENCLAW_HOME" in
+    */.openclaw)
+      echo "ERROR: OPENCLAW_HOME must be the user home base (e.g. /home/$APP_USER), not the .openclaw directory."
+      echo "Fix: export OPENCLAW_HOME=/home/$APP_USER"
+      exit 1
+      ;;
+  esac
+}
 
 resolve_openclaw_bin() {
   if command -v "$OPENCLAW_BIN" >/dev/null 2>&1; then
@@ -73,18 +85,18 @@ install_scheduler_linux() {
 ensure_chad_agent() {
   echo "[agent-check] verifying chad agent"
 
-  if run_as_app_user "$OPENCLAW_BIN" agents list --json | jq -e '.agents[]? | select(((.id // .name // "") | ascii_downcase) == "chad")' >/dev/null; then
+  if run_as_app_user "$OPENCLAW_BIN" agents list --json | jq -e '((if type=="array" then . elif type=="object" then (.agents // []) else [] end)[]? | (.id // .name // . // "") | tostring | ascii_downcase) == "chad"' >/dev/null; then
     echo "[agent-check] chad already present"
     return
   fi
 
   echo "[agent-check] chad not found. adding default dev agent (model=$CHAD_MODEL)"
-  mkdir -p "/home/$APP_USER/.openclaw/workspace-chad"
-  chown -R "$APP_USER":"$APP_USER" "/home/$APP_USER/.openclaw"
+  mkdir -p "$OPENCLAW_DATA_DIR/workspace-chad"
+  chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_DATA_DIR"
 
   if ! run_as_app_user "$OPENCLAW_BIN" agents add chad \
       --model "$CHAD_MODEL" \
-      --workspace "/home/$APP_USER/.openclaw/workspace-chad" \
+      --workspace "$OPENCLAW_DATA_DIR/workspace-chad" \
       --non-interactive \
       --json >/tmp/rei-orch-agent-add.json 2>/tmp/rei-orch-agent-add.err; then
     echo "ERROR: failed to auto-add chad agent."
@@ -106,6 +118,7 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
 fi
 
 echo "[preflight] checking prerequisites"
+validate_openclaw_home
 resolve_openclaw_bin
 require_gateway
 
@@ -125,15 +138,15 @@ fi
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
 echo "[3/7] install execute-plan skill"
-SKILL_DST="/home/$APP_USER/.openclaw/workspace/skills/execute-plan"
+SKILL_DST="$OPENCLAW_DATA_DIR/workspace/skills/execute-plan"
 mkdir -p "$SKILL_DST"
 cp -r "$APP_DIR/skills/execute-plan/"* "$SKILL_DST/"
-chown -R "$APP_USER":"$APP_USER" "/home/$APP_USER/.openclaw/workspace/skills"
+chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_DATA_DIR/workspace/skills"
 
 echo "[4/7] openclaw config bootstrap (if missing)"
-if [[ ! -f "$OPENCLAW_HOME/openclaw.json" ]]; then
-  mkdir -p "$OPENCLAW_HOME"
-  cp "$APP_DIR/templates/openclaw.orchestrator.example.json" "$OPENCLAW_HOME/openclaw.json"
+if [[ ! -f "$OPENCLAW_DATA_DIR/openclaw.json" ]]; then
+  mkdir -p "$OPENCLAW_DATA_DIR"
+  cp "$APP_DIR/templates/openclaw.orchestrator.example.json" "$OPENCLAW_DATA_DIR/openclaw.json"
 fi
 
 echo "[5/7] orchestrator runtime layout"
@@ -142,7 +155,7 @@ if [[ ! -f "$ORCH_HOME/config.json" ]]; then
   cp "$APP_DIR/templates/orchestrator.config.example.json" "$ORCH_HOME/config.json"
 fi
 
-chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_HOME"
+chown -R "$APP_USER":"$APP_USER" "$OPENCLAW_DATA_DIR"
 
 echo "[6/7] ensure required dev agent is available"
 ensure_chad_agent

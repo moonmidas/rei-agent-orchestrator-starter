@@ -123,7 +123,7 @@ def cmd_capture_screenshot(args: argparse.Namespace) -> int:
     if not row:
         raise SystemExit('task not found')
     command_tmpl = args.command_template or cfg.get('screenshot', {}).get('command', 'npx playwright screenshot {url} {output}')
-    out_dir = Path(args.output_dir or (Path(cfg['openclawHome']) / 'orchestrator' / 'artifacts'))
+    out_dir = Path(args.output_dir or (Path(cfg['openclawHome']) / '.openclaw' / 'orchestrator' / 'artifacts'))
     out_path = out_dir / f"{args.task_id}.png"
     result = ScreenshotCapture(command_tmpl).capture(args.url, str(out_path))
     artifact_id = repo.add_artifact(args.task_id, 'screenshot', result['path'], args.run_id, metadata=result)

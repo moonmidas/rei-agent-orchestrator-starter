@@ -125,7 +125,7 @@ Snippet(s):
 ### 6) Database proof (required for DB-affecting work)
 DB path:
 ```text
-${OPENCLAW_HOME}/orchestrator/orchestrator.db
+${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db
 ```
 Queries:
 ```bash

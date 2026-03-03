@@ -1,0 +1,80 @@
+== openclaw cli ==
+2026.2.26
+== gateway rpc ==
+Service: systemd (disabled)
+File logs: /tmp/openclaw/openclaw-2026-03-03.log
+
+Config (cli): $OPENCLAW_HOME/.openclaw/openclaw.json
+Config (service): $OPENCLAW_HOME/.openclaw/openclaw.json
+
+Gateway: bind=loopback (127.0.0.1), port=18789 (env/config)
+Probe target: ws://127.0.0.1:18789
+Dashboard: http://127.0.0.1:18789/
+Probe note: Loopback-only gateway; only local clients can connect.
+
+Runtime: unknown (Error: systemctl --user unavailable: Failed to connect to bus: No medium found)
+RPC probe: ok
+
+
+Listening: 127.0.0.1:18789
+Troubles: run openclaw status
+Troubleshooting: https://docs.openclaw.ai/troubleshooting
+== configured agents ==
+[
+  {
+    "id": "main",
+    "default": true,
+    "model": "openai-codex/gpt-5.3-codex",
+    "subagents": {
+      "allowAgents": [
+        "chad",
+        "halbert",
+        "dwight",
+        "gilfoyle",
+        "darlene"
+      ]
+    }
+  },
+  {
+    "id": "top-talent-recruiter",
+    "model": "openrouter/openrouter/free",
+    "skills": []
+  },
+  {
+    "id": "dashboard-dev",
+    "model": "openai-codex/gpt-5.3-codex",
+    "skills": []
+  },
+  {
+    "id": "dashboard-reviewer",
+    "model": "openai-codex/gpt-5.3-codex",
+    "skills": []
+  },
+  {
+    "id": "ui-ux-visionary",
+    "model": "openai-codex/gpt-5.3-codex",
+    "skills": []
+  },
+  {
+    "id": "meta-ads-policy-expert",
+    "model": "openai-codex/gpt-5.3-codex",
+    "skills": []
+  },
+  {
+    "id": "chad",
+    "model": "openai-codex/gpt-5.3-codex",
+    "skills": []
+  },
+  {
+    "id": "halbert",
+    "model": "opencode/kimi-k2.5-free",
+    "skills": []
+  }
+]
+== scheduler health ==
+scheduler=skip (timer not installed on this host)
+doctor: OK
+== orchestrator runtime db ==
+== orchestrator db ==
+db path: /home/clawdbot/.openclaw/orchestrator/orchestrator.db
+runtime-doctor: OK

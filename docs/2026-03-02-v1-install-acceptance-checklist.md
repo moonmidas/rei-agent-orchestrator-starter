@@ -1,5 +1,7 @@
 # 2026-03-02 V1 Install Acceptance Checklist
 
+_Use `docs/2026-03-03-release-finalization-plan.md` for owner/status tracking; this checklist only covers the criteria that must be satisfied._
+
 ## Preflight
 - [ ] Domain/DNS ready (if web UI/proxy used)
 - [ ] Discord bot token
@@ -10,7 +12,8 @@
 - [ ] `install-orchestrator.sh` runs cleanly
 - [ ] `clawdbot-gateway` active under systemd
 - [ ] orchestrator worker service active (if split process)
-- [ ] DB created + migrations applied at `${OPENCLAW_HOME}/orchestrator/orchestrator.db`
+- [ ] DB created + migrations applied at `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db`
+- [ ] Artifacts directory created at `${OPENCLAW_HOME}/.openclaw/orchestrator/artifacts`
 - [ ] scheduler installed for platform:
   - [ ] Linux `systemd` timer
   - [ ] macOS `launchd` plist

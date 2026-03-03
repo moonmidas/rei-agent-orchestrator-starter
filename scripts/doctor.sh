@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+OPENCLAW_HOME=${OPENCLAW_HOME:-$HOME}
+
+validate_openclaw_home() {
+  case "$OPENCLAW_HOME" in
+    */.openclaw)
+      echo "ERROR: OPENCLAW_HOME must be the user home base (for example: $HOME), not the .openclaw directory." >&2
+      echo "Fix: export OPENCLAW_HOME=$HOME" >&2
+      exit 1
+      ;;
+  esac
+}
+
+validate_openclaw_home
+export OPENCLAW_HOME
+
 echo "== openclaw cli =="
 if ! command -v openclaw >/dev/null 2>&1; then
   echo "ERROR: openclaw CLI not found in PATH"
@@ -16,7 +31,6 @@ fi
 
 echo "== configured agents =="
 openclaw config get agents.list
-
 
 
 echo "== scheduler health =="

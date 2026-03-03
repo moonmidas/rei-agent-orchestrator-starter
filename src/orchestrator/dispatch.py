@@ -36,7 +36,15 @@ class DispatchEngine:
             run_id = existing['id']
             agent = existing['agent_id']
         else:
-            available_agents = self.available_agents or set(getattr(self.dispatch_adapter, '_known_agents', set()) or {'chad'})
+            available_agents = set(self.available_agents or [])
+            if not available_agents and hasattr(self.dispatch_adapter, 'probe_capabilities'):
+                try:
+                    self.dispatch_adapter.probe_capabilities()
+                except Exception:
+                    pass
+                available_agents = set(getattr(self.dispatch_adapter, '_known_agents', set()) or set())
+            if not available_agents:
+                available_agents = {'chad'}
             agent = resolve_agent(task, self.config, available_agents)
             run_id = self.repo.create_run(task['id'], agent, dedupe, 'running')
             self.notifier.notify(self.repo, 'queued', task['plan_id'], task['id'], run_id, origin_thread, f"🟡 queued: task {task['id']} -> {agent}")
@@ -72,17 +80,29 @@ class DispatchEngine:
     def process_ci(self, run_id: str, checks: list[dict]) -> str:
         state = aggregate_ci(checks)
         mapped = {'pending': 'waiting_ci', 'success': 'completed', 'failed': 'failed'}[state]
-        self.repo.update_run_state(run_id, mapped)
         row = self.repo.conn.execute('select task_id from runs where id=?', (run_id,)).fetchone()
         task_id = row['task_id'] if row else None
         task = self.repo.conn.execute('select * from tasks where id=?', (task_id,)).fetchone() if task_id else None
+
         if task_id:
             task_state = {'pending': 'waiting_ci', 'success': 'done', 'failed': 'failed'}[state]
             if task_state == 'done':
-                self.complete_task(task)
+                try:
+                    self.complete_task(task)
+                    self.repo.update_run_state(run_id, 'completed')
+                except ValueError as e:
+                    self.repo.update_run_state(run_id, 'waiting_review', str(e))
+                    self.repo.conn.execute('update tasks set status=? where id=?', ('review', task_id))
+                    self.repo.conn.commit()
+                    self.repo.add_event('run.artifact_gate_failed', {'error': str(e)}, run_id=run_id, task_id=task_id, plan_id=task['plan_id'])
+                    mapped = 'waiting_review'
             else:
+                self.repo.update_run_state(run_id, mapped)
                 self.repo.conn.execute('update tasks set status=? where id=?', (task_state, task_id))
                 self.repo.conn.commit()
+        else:
+            self.repo.update_run_state(run_id, mapped)
+
         for c in checks:
             check_id = c.get('id') or f"{c.get('provider','ci')}:{run_id}:{c.get('status','pending')}"
             self.repo.upsert_ci_check(check_id, run_id, c.get('provider', 'unknown'), c.get('status', 'pending'), c.get('details', {}))
@@ -94,6 +114,8 @@ class DispatchEngine:
             elif mapped in ('failed', 'completed'):
                 emoji = '🔴' if mapped == 'failed' else '✅'
                 self.notifier.notify(self.repo, mapped, task['plan_id'], task['id'], run_id, origin, f"{emoji} {mapped}: task {task['id']}")
+            elif mapped == 'waiting_review':
+                self.notifier.notify(self.repo, 'failed', task['plan_id'], task['id'], run_id, origin, f"🟠 waiting_review: task {task['id']} missing required artifact")
         return mapped
 
     def complete_task(self, task_row, artifacts: list[dict] | None = None):

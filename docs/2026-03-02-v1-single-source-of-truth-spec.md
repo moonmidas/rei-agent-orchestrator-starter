@@ -4,8 +4,10 @@
 A fresh OpenClaw install can run the Rei orchestrator stack reliably end-to-end:
 plan -> microtasks -> agent dispatch -> CI/PR -> review/merge/report, with full observability.
 
+_Reference: implementation tracking and statuses now live in `docs/2026-03-03-release-finalization-plan.md`. If guidance here ever conflicts with execution notes, follow the release plan._
+
 ## Finalized v1 decisions (locked)
-- **DB default path:** `${OPENCLAW_HOME}/orchestrator/orchestrator.db` (default OPENCLAW_HOME is `~/.openclaw`).
+- **DB default path:** `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db` (home-base OPENCLAW_HOME, e.g. `/home/<user>`).
 - **Review/approval location:** approval is captured in the **same Discord thread** where task milestones are posted.
 - **Auto-merge default:** **OFF**. Merge is opt-in via config and still requires policy gates.
 - **Routing model:** static `routing.map` config + optional agent auto-discovery from OpenClaw agent roster.
@@ -69,3 +71,8 @@ queued -> running -> waiting_ci -> waiting_review -> failed|completed|merged
 - trusted proxies configured
 - secrets never committed
 - env validation before startup
+
+
+## Deferred items (tracked, not silently dropped)
+- Superpowers adapter-driven decomposition remains deferred/out-of-scope for v0.2.0 release gating.
+- Canonical local decomposition remains the active implementation for `/execute-plan`.

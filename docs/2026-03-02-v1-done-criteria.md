@@ -2,18 +2,20 @@
 
 V1 is DONE only if all pass:
 
+_Reference: statuses, owners, and execution order now live in `docs/2026-03-03-release-finalization-plan.md`. This doc remains the criteria source; defer to the plan if anything appears ambiguous._
+
 ## Install & bootstrap
 - One command install succeeds on clean host.
-- Services start under supervision (gateway + orchestrator workers).
+- Gateway is a prerequisite managed outside this package; orchestrator worker scheduler assets install and run.
 - DB migrations apply automatically.
-- Default DB path resolves to `${OPENCLAW_HOME}/orchestrator/orchestrator.db`.
+- Default DB path resolves to `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db` when `OPENCLAW_HOME` is home-base (e.g., `/home/<user>`).
 - Scheduler installed for host OS:
   - Linux: `systemd` service + timer
   - macOS: `launchd` agent/plist
 
 ## Workflow behavior
 - `/execute-plan` produces a structured plan.
-- Plan decomposes into microtasks via superpowers adapter.
+- Plan decomposes into deterministic local atomic tasks (superpowers adapter deferred for this release line).
 - Microtasks create tasks/runs in DB.
 - Chad/Halbert dispatch happens via canonical path only.
 - Routing respects explicit map + auto-discovered agent roster + Chad dev fallback.
@@ -39,3 +41,8 @@ V1 is DONE only if all pass:
 - Milestone notifications sent to configured thread/channel.
 - One notification per milestone (no spam duplicates).
 - Approval is captured from the same Discord thread used for task updates.
+
+
+## Deferred / out-of-scope for v0.2.0
+- Superpowers adapter integration is deferred.
+- Current decomposition path is local deterministic parsing/decomposition.
