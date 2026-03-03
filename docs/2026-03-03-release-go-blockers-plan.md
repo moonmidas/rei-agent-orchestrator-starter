@@ -116,7 +116,7 @@ Close the release blockers found in the repo audit so `rei-agent-orchestrator-st
   - caveats include current constraints honestly.
 
 ### E-02 Sync planning docs with execution reality
-- **Status:** todo
+- **Status:** done
 - **Goal:** Reflect current phase progress + remaining gaps in atomic docs.
 - **Files:**
   - `docs/2026-03-02-orchestrator-hard-reset-atomic-tasks.md`

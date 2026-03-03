@@ -20,7 +20,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - no legacy-profile env vars or install branches remain.
 
 ### A-02 Remove gateway supervision from package
-- Status: todo
+- Status: done
 - Goal: package must not manage gateway service.
 - Files:
   - `systemd-gateway service unit` (delete)
@@ -40,7 +40,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - installer exits with clear errors if `openclaw` missing or gateway probe fails.
 
 ### A-04 Rewrite README to true scope
-- Status: todo
+- Status: done
 - Goal: docs describe only orchestrator runtime product.
 - Files:
   - `README.md`
@@ -52,7 +52,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 ## Phase B — Runtime foundation
 
 ### B-01 Create orchestrator runtime directory layout
-- Status: todo
+- Status: done
 - Goal: standard app paths under OpenClaw home.
 - Files:
   - `install-orchestrator.sh`
@@ -61,7 +61,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - defaults resolve to `${OPENCLAW_HOME}/orchestrator/*`.
 
 ### B-02 Implement migration runner
-- Status: todo
+- Status: done
 - Goal: db schema auto-applies on startup.
 - Files:
   - `src/` (new runtime app files)
@@ -70,7 +70,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - fresh install creates DB and all core tables.
 
 ### B-03 Implement persistence primitives
-- Status: todo
+- Status: done
 - Goal: CRUD helpers for tasks/runs/approvals/events/artifacts.
 - Files:
   - `src/db/*`
@@ -78,7 +78,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - unit checks pass for create/read/update transitions.
 
 ### B-04 Add deterministic doctor check for runtime DB
-- Status: todo
+- Status: done
 - Goal: healthcheck validates DB path + required tables.
 - Files:
   - `scripts/doctor.sh`
@@ -91,7 +91,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 ## Phase C — `/execute-plan` engine integration
 
 ### C-01 Wire parser to orchestration service
-- Status: todo
+- Status: done
 - Goal: `/execute-plan` persists a plan record and generated tasks.
 - Files:
   - `skills/execute-plan/*`
@@ -100,7 +100,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - execute-plan produces persisted tasks in DB.
 
 ### C-02 Atomic task decomposition implementation
-- Status: todo
+- Status: done
 - Goal: deterministic microtask generation + ordering.
 - Files:
   - `src/orchestrator/decompose.*`
@@ -108,7 +108,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - plan is split into atomic tasks with dependency edges.
 
 ### C-03 Discord-thread approval gate
-- Status: todo
+- Status: done
 - Goal: approval captured in same origin thread.
 - Files:
   - `src/orchestrator/approval.*`
@@ -121,7 +121,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 ## Phase D — Dispatch + CI/PR + screenshots
 
 ### D-01 Canonical dispatch path only
-- Status: todo
+- Status: done
 - Goal: every run created via one dispatch module.
 - Files:
   - `src/orchestrator/dispatch.*`
@@ -129,7 +129,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - out-of-band spawn path disabled for tracked workflows.
 
 ### D-02 Routing + agent discovery + Chad bootstrap
-- Status: todo
+- Status: done
 - Goal: routing map + fallback to Chad for dev tasks.
 - Files:
   - `src/orchestrator/routing.*`
@@ -138,7 +138,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - missing dev mapping auto-resolves to chad.
 
 ### D-03 Branch + PR mandatory for code tasks
-- Status: todo
+- Status: done
 - Goal: enforce branch-per-task and PR creation for code work.
 - Files:
   - `src/orchestrator/git-pr.*`
@@ -146,7 +146,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - code task cannot complete without PR URL.
 
 ### D-04 CI polling adapter
-- Status: todo
+- Status: done
 - Goal: local checks and/or GitHub Actions status integration.
 - Files:
   - `src/orchestrator/ci.*`
@@ -154,7 +154,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - run transitions to waiting_ci/review based on checks.
 
 ### D-05 Screenshot evidence gate
-- Status: todo
+- Status: done
 - Goal: require Playwright/browser snapshots for UI tasks.
 - Files:
   - `src/orchestrator/artifacts.*`
@@ -166,7 +166,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 ## Phase E — Watchdog and reliability
 
 ### E-01 Linux scheduler wiring (systemd timer)
-- Status: todo
+- Status: done
 - Goal: every-minute worker loop invocation.
 - Files:
   - `systemd/rei-orchestrator-worker.service`
@@ -176,7 +176,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - timer active and triggering worker.
 
 ### E-02 macOS scheduler wiring (launchd)
-- Status: todo
+- Status: done
 - Goal: parity with Linux loop cadence.
 - Files:
   - `launchd/com.rei.orchestrator.worker.plist`
@@ -185,7 +185,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - launchctl loads and triggers worker.
 
 ### E-03 Stale run detection + retry-once policy
-- Status: todo
+- Status: done
 - Goal: detect stuck runs, retry once, then escalate.
 - Files:
   - `src/orchestrator/watchdog.*`
@@ -193,7 +193,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - simulated stuck run flows through retry + escalation.
 
 ### E-04 Idempotency key enforcement
-- Status: todo
+- Status: done
 - Goal: prevent duplicate active runs for same transition.
 - Files:
   - `src/db/*`
@@ -206,7 +206,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 ## Phase F — Acceptance + packaging
 
 ### F-01 End-to-end acceptance script
-- Status: todo
+- Status: done
 - Goal: run install -> execute-plan -> approval -> dispatch -> CI/PR -> completion.
 - Files:
   - `scripts/acceptance-e2e.sh`
@@ -223,7 +223,7 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
   - user can install specific version via URL.
 
 ### F-03 Rollback and disaster recovery doc
-- Status: todo
+- Status: done
 - Goal: safe rollback path for failed upgrades.
 - Files:
   - `docs/rollback.md`
@@ -243,3 +243,8 @@ Source plan: `docs/2026-03-02-orchestrator-hard-reset-plan.md`
 1. A-01, A-02, A-03, A-04
 2. B-01, B-02, B-03, B-04
 3. C-01, C-02, C-03
+
+
+## Execution status note (2026-03-03)
+- Superpowers adapter decomposition is **deferred/out-of-scope** for current release line; deterministic local decomposition is used in v0.2.0.
+- Remaining non-done items are intentionally tracked as follow-up gaps rather than silently implied complete.
