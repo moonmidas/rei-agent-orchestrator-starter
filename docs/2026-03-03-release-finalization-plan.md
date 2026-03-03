@@ -85,7 +85,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - all commands pass with captured outputs.
 
 ### C-02 Run one real thread smoke flow
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Validate live `/execute-plan` lifecycle in a Discord thread.
 - **Done when:**
   - approve + dispatch + CI update + milestone lifecycle observed
