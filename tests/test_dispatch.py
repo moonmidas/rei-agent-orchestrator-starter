@@ -116,8 +116,14 @@ class TestDispatch(unittest.TestCase):
 
     def test_ui_ci_success_without_screenshot_is_blocked(self):
         run = self.engine.dispatch_task(self._task(self.ui_task))
-        with self.assertRaises(ValueError):
-            self.engine.process_ci(run, [{'status': 'success', 'provider': 'gha', 'id': '1'}])
+        state = self.engine.process_ci(run, [{'status': 'success', 'provider': 'gha', 'id': '1'}])
+        self.assertEqual(state, 'waiting_review')
+        run_row = self.conn.execute('select state from runs where id=?', (run,)).fetchone()
+        task_row = self.conn.execute('select status from tasks where id=?', (self.ui_task,)).fetchone()
+        self.assertEqual(run_row['state'], 'waiting_review')
+        self.assertEqual(task_row['status'], 'review')
+        evt = self.conn.execute("select event_type from events where run_id=? and event_type='run.artifact_gate_failed'", (run,)).fetchone()
+        self.assertIsNotNone(evt)
 
     def test_dispatch_idempotency_dedupe_key(self):
         row = self._task(self.ui_task)
