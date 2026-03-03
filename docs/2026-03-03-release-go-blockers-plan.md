@@ -107,7 +107,7 @@ Close the release blockers found in the repo audit so `rei-agent-orchestrator-st
   - each mode has clear prerequisites and pass/fail criteria.
 
 ### E-01 Align README claims with proven behavior
-- **Status:** todo
+- **Status:** done
 - **Goal:** Remove over-claims; state exact guarantees and caveats.
 - **Files:**
   - `README.md`

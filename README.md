@@ -2,23 +2,18 @@
 
 Orchestrator runtime bootstrap for machines that already have OpenClaw installed and gateway running.
 
-## Current behavior
+## Current behavior (verified in unit tests and/or acceptance script)
 
-- SQLite runtime: plans/tasks/runs/approvals/events/artifacts/ci_checks/dispatch_attempts
-- `/execute-plan` parsing + atomic task persistence
-- Approval: same-thread enforced for both manual and Discord-polled approval
-- Dispatch hardening:
-  - runtime capability probe (`openclaw agents list --json`)
-  - canonical dispatch command template (`runtime.openclawDispatch.command`)
-  - agent existence guard (default fallback `chad`)
-  - dispatch attempt persistence (run_id/session_key/raw response/error)
-- CI transitions with screenshot gate enforced on completion paths (including `ci-update`)
-- Discord milestone notifier states: queued, dispatched, waiting_ci, failed, completed/merged
-  - default destination: origin thread
-  - optional override: `discord.milestones.targetThreadId`
-  - dedupe key prevents duplicate milestone posts
-- Watchdog stale-run retry/escalation
-- Linux systemd timer + macOS launchd helper
+- SQLite runtime with persisted entities: plans, tasks, runs, approvals, events, artifacts, ci_checks, dispatch_attempts
+- `/execute-plan` persists a decomposed task list with deterministic sequence ordering
+- Approval is enforced in the originating thread for both manual approve and Discord-polled approve
+- Dispatch path uses one engine and records dispatch attempt/session linkage
+  - runtime capability probe (`openclaw agents list --json`) is used before routing when needed
+  - routing supports explicit map plus dev/code fallback to `chad`
+- CI updates enforce screenshot artifact gate before a UI task can finalize as completed
+- Milestone notifier emits deduped lifecycle events (queued/dispatched/waiting_ci/failed/completed)
+- Watchdog performs stale-run retry-once then escalation
+- Scheduler assets are included for Linux (`systemd`) and macOS (`launchd` helper script)
 
 ## Install
 
@@ -26,7 +21,7 @@ Orchestrator runtime bootstrap for machines that already have OpenClaw installed
 curl -fsSL https://raw.githubusercontent.com/moonmidas/rei-agent-orchestrator-starter/main/install-orchestrator.sh | sudo bash
 ```
 
-Linux installer now verifies `rei-orchestrator-worker.timer` is active before success.
+Linux installer checks `rei-orchestrator-worker.timer` activation on Linux hosts.
 
 ## Verify
 
@@ -86,6 +81,8 @@ scripts/install-launchd-macos.sh uninstall
 ## Known caveats
 
 - Discord approval is polling-based (not event-stream push).
-- Dispatch and milestone posting depend on local OpenClaw CLI behavior/version.
+- `--real-discord` acceptance requires a valid Discord thread id and send permissions for the active OpenClaw account.
+- Dispatch and milestone posting behavior depend on local OpenClaw CLI behavior/version.
 - GitHub workflows require `gh` authentication in runtime environment.
 - Screenshot capture requires configured command/tool availability (e.g., Playwright).
+- `--mock` acceptance validates orchestration flow mechanics but does not validate external Discord delivery.
