@@ -62,7 +62,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - caveats mention required Discord thread id + permissions for `--real-discord`.
 
 ### B-02 Align docs with single-source release plan
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Remove ambiguity between legacy docs and this plan.
 - **Files:**
   - `docs/2026-03-02-v1-done-criteria.md`

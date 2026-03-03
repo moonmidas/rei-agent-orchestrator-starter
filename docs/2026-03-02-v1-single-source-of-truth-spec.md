@@ -4,6 +4,8 @@
 A fresh OpenClaw install can run the Rei orchestrator stack reliably end-to-end:
 plan -> microtasks -> agent dispatch -> CI/PR -> review/merge/report, with full observability.
 
+_Reference: implementation tracking and statuses now live in `docs/2026-03-03-release-finalization-plan.md`. If guidance here ever conflicts with execution notes, follow the release plan._
+
 ## Finalized v1 decisions (locked)
 - **DB default path:** `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db` (home-base OPENCLAW_HOME, e.g. `/home/<user>`).
 - **Review/approval location:** approval is captured in the **same Discord thread** where task milestones are posted.

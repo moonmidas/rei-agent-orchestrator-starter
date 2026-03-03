@@ -2,6 +2,8 @@
 
 V1 is DONE only if all pass:
 
+_Reference: statuses, owners, and execution order now live in `docs/2026-03-03-release-finalization-plan.md`. This doc remains the criteria source; defer to the plan if anything appears ambiguous._
+
 ## Install & bootstrap
 - One command install succeeds on clean host.
 - Gateway is a prerequisite managed outside this package; orchestrator worker scheduler assets install and run.
