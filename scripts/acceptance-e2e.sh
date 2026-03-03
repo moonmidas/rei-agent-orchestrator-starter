@@ -2,14 +2,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+export OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME}"
+OPENCLAW_DATA_DIR="$OPENCLAW_HOME/.openclaw"
 export PYTHONPATH="$ROOT"
 MODE="real"
 if [[ "${1:-}" == "--mock" ]]; then
   MODE="mock"
 fi
 
-mkdir -p "$OPENCLAW_HOME/orchestrator"
+mkdir -p "$OPENCLAW_DATA_DIR/orchestrator"
 
 preflight_real() {
   command -v openclaw >/dev/null || { echo "missing openclaw" >&2; exit 1; }
@@ -63,9 +64,9 @@ else
   preflight_real
 fi
 
-cat > "$OPENCLAW_HOME/orchestrator/config.acceptance.json" <<'JSON'
+cat > "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" <<'JSON'
 {
-  "database": {"path": "${OPENCLAW_HOME}/orchestrator/orchestrator.db"},
+  "database": {"path": "${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db"},
   "routing": {"map": {"code": "chad", "default": "chad"}, "devFallbackAgent": "chad"},
   "discord": {
     "approval": {
@@ -83,40 +84,40 @@ JSON
 
 python3 - <<'PY'
 import json, os
-p = os.path.expanduser(os.path.join(os.environ['OPENCLAW_HOME'], 'orchestrator', 'config.acceptance.json'))
+p = os.path.expanduser(os.path.join(os.environ['OPENCLAW_HOME'], '.openclaw', 'orchestrator', 'config.acceptance.json'))
 cfg = json.load(open(p))
 cfg['database']['path'] = cfg['database']['path'].replace('${OPENCLAW_HOME}', os.environ['OPENCLAW_HOME'])
 json.dump(cfg, open(p, 'w'))
 PY
 
-python3 -m src.orchestrator.cli migrate --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json"
-PLAN_OUT=$(python3 -m src.orchestrator.cli execute-plan --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --thread-id acceptance-thread --text '/execute-plan implement api; add tests; capture ui screenshot')
+python3 -m src.orchestrator.cli migrate --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json"
+PLAN_OUT=$(python3 -m src.orchestrator.cli execute-plan --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --thread-id acceptance-thread --text '/execute-plan implement api; add tests; capture ui screenshot')
 echo "$PLAN_OUT"
 PLAN_ID=$(echo "$PLAN_OUT" | awk -F= '/plan_id/{print $2}')
 
 if [[ "$MODE" == "mock" ]]; then
   echo '[{"id":"msg-1","thread_id":"acceptance-thread","author_id":"acceptance-bot","content":"approve"}]' > "$TMP_MESSAGES"
-  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve-from-discord --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread)
+  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve-from-discord --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread)
 else
-  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread --approver acceptance-real --text approve)
+  APPROVAL_OUT=$(python3 -m src.orchestrator.cli approve --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --thread-id acceptance-thread --approver acceptance-real --text approve)
 fi
 echo "$APPROVAL_OUT"
 
-RUN_OUT=$(python3 -m src.orchestrator.cli dispatch-next --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --branch "task/${PLAN_ID}" --pr-url "https://example.invalid/pr/${PLAN_ID}")
+RUN_OUT=$(python3 -m src.orchestrator.cli dispatch-next --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --plan-id "$PLAN_ID" --branch "task/${PLAN_ID}" --pr-url "https://example.invalid/pr/${PLAN_ID}")
 echo "$RUN_OUT"
 RUN_ID=$(echo "$RUN_OUT" | awk -F= '/run_id/{print $2}')
-python3 -m src.orchestrator.cli capture-screenshot --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --task-id "$(python3 - <<PY
+python3 -m src.orchestrator.cli capture-screenshot --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --task-id "$(python3 - <<PY
 import sqlite3,os
-conn=sqlite3.connect(os.path.join(os.environ['OPENCLAW_HOME'],'orchestrator','orchestrator.db'))
+conn=sqlite3.connect(os.path.join(os.environ['OPENCLAW_HOME'],'.openclaw','orchestrator','orchestrator.db'))
 print(conn.execute("select id from tasks where plan_id=? and work_type='ui'", ('${PLAN_ID}',)).fetchone()[0])
 PY
 )" --run-id "$RUN_ID" --url https://example.invalid --command-template "python3 -c \"from pathlib import Path; p=Path('{output}'); p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(b'png')\""
-python3 -m src.orchestrator.cli ci-update --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --run-id "$RUN_ID" --statuses success
-python3 -m src.orchestrator.cli worker-tick --config "$OPENCLAW_HOME/orchestrator/config.acceptance.json" --stale-minutes 1
+python3 -m src.orchestrator.cli ci-update --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --run-id "$RUN_ID" --statuses success
+python3 -m src.orchestrator.cli worker-tick --config "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" --stale-minutes 1
 
 EVIDENCE=$(python3 - <<PY
 import sqlite3, os, json
-conn=sqlite3.connect(os.path.join(os.environ['OPENCLAW_HOME'],'orchestrator','orchestrator.db'))
+conn=sqlite3.connect(os.path.join(os.environ['OPENCLAW_HOME'],'.openclaw','orchestrator','orchestrator.db'))
 conn.row_factory=sqlite3.Row
 run=conn.execute('select id, openclaw_session_key, state, dispatch_command, dispatch_error_json from runs where id=?', ('${RUN_ID}',)).fetchone()
 events=[dict(r) for r in conn.execute('select event_type from events where run_id=? order by id', ('${RUN_ID}',)).fetchall()]

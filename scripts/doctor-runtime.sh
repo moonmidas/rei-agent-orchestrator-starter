@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OPENCLAW_HOME=${OPENCLAW_HOME:-$HOME/.openclaw}
-ORCH_HOME="$OPENCLAW_HOME/orchestrator"
+OPENCLAW_HOME=${OPENCLAW_HOME:-$HOME}
+OPENCLAW_DATA_DIR="$OPENCLAW_HOME/.openclaw"
+ORCH_HOME="$OPENCLAW_DATA_DIR/orchestrator"
 DB_PATH=${ORCHESTRATOR_DB_PATH:-$ORCH_HOME/orchestrator.db}
 
 mkdir -p "$ORCH_HOME"
