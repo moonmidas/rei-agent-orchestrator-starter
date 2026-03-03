@@ -72,7 +72,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - no conflicting path defaults or completion claims remain.
 
 ### C-01 Run full automated verification matrix
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Prove release candidate health.
 - **Commands:**
   - `python3 -m unittest discover -s tests -v`

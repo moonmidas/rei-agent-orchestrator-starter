@@ -1,0 +1,14 @@
+db=/home/clawdbot/.openclaw/orchestrator/orchestrator.db
+applied=none
+plan_id=plan_985cf533f1e0
+task_count=3
+status=awaiting_approval
+plan_id=plan_985cf533f1e0
+status=approved
+run_id=run_d1cb238173f0
+artifact_id=artifact_667b9cb3272b
+path=/home/clawdbot/.openclaw/orchestrator/artifacts/task_b45be8b0c921.png
+state=completed
+stale_processed=0
+EVIDENCE={"dispatch_command": "openclaw agent --agent chad --session-id orchestrator:run_d1cb238173f0 --message 'orchestrator dispatch run_id=run_d1cb238173f0 task_id=task_0eb0ba8203a3 plan_id=plan_985cf533f1e0 title=implement api' --json", "dispatch_error_json": null, "events": ["milestone:acceptance-local-thread:queued:run_d1cb238173f0", "run.dispatched", "milestone:acceptance-local-thread:dispatched:run_d1cb238173f0", "ci.updated", "milestone:acceptance-local-thread:completed:run_d1cb238173f0"], "milestone_errors": [], "milestones_checked": 3, "mode": "real-local", "run_id": "run_d1cb238173f0", "session_key": "ded98814-bf91-4cf5-9568-41628c34d667", "state": "completed", "thread_id": "acceptance-local-thread"}
+ACCEPTANCE_E2E_OK mode=real-local thread=acceptance-local-thread plan=plan_985cf533f1e0 run=run_d1cb238173f0
