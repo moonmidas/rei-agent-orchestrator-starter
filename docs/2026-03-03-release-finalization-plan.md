@@ -26,7 +26,7 @@ This plan replaces prior plan docs and is now the single active release plan.
   - clean-home simulation does not produce DB path split.
 
 ### A-02 Fix screenshot default artifact path consistency
-- **Status:** todo
+- **Status:** done (2026-03-03)
 - **Goal:** Ensure screenshot defaults write under `.openclaw/orchestrator/artifacts`.
 - **Files:**
   - `src/orchestrator/cli.py`
