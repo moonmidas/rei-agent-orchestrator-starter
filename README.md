@@ -33,7 +33,7 @@ Linux installer now verifies `rei-orchestrator-worker.timer` is active before su
 ```bash
 python3 -m unittest discover -s tests -v
 scripts/doctor.sh
-scripts/acceptance-e2e.sh
+scripts/acceptance-e2e.sh --thread-id <discord_thread_id>
 ```
 
 Mock acceptance is explicit opt-in only:
@@ -49,6 +49,9 @@ scripts/acceptance-e2e.sh --mock
 - `openclaw gateway status`
 - `gh auth status`
 - `chad` agent present
+- `--thread-id <discord_thread_id>` is provided and used for milestone posts
+
+The script now hard-fails if any persisted milestone event payload contains a non-null `error`.
 
 ## Scheduler
 
