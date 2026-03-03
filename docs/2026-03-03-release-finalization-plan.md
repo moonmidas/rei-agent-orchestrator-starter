@@ -99,21 +99,21 @@ This plan replaces prior plan docs and is now the single active release plan.
   - PR opened to `main` with evidence checklist.
 
 ### D-02 Merge and release tag
-- **Status:** blocked (awaiting PR #10 merge before tagging)
+- **Status:** done (2026-03-03)
 - **Goal:** Finalize releasable state and immutable version marker.
 - **Files/metadata:**
   - `docs/releases/v0.2.0.md`
   - Git tag `v0.2.0`
 - **Done when:**
-  - PR merged to `main`
-  - `v0.2.0` tag created + pushed.
+  - PR merged to `main` ✅ (`#10`, merge commit `ff4b24d`)
+  - `v0.2.0` tag created + pushed ✅ (retargeted to `ff4b24d`)
 
 ### D-03 Post-merge install sanity check
-- **Status:** blocked (pending merge + tag from D-02)
+- **Status:** done (2026-03-03)
 - **Goal:** Confirm install command from `main` matches shipped behavior.
 - **Done when:**
-  - fresh install smoke succeeds on target host profile
-  - no pathing regressions observed.
+  - fresh install/acceptance smoke succeeds on target host profile ✅
+  - no pathing regressions observed ✅ (real-local run `run_0f2ce9453166`, real-discord run `run_9f5dfe80000d`)
 
 ---
 
@@ -126,8 +126,8 @@ This plan replaces prior plan docs and is now the single active release plan.
 ---
 
 ## Release Gate Checklist
-- [ ] All atomic tasks marked done
-- [ ] Verification outputs captured
-- [ ] README/docs aligned with actual behavior
-- [ ] Main branch updated
-- [ ] Tag `v0.2.0` published
+- [x] All atomic tasks marked done
+- [x] Verification outputs captured
+- [x] README/docs aligned with actual behavior
+- [x] Main branch updated
+- [x] Tag `v0.2.0` published

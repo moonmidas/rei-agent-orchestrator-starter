@@ -10,8 +10,8 @@ _Use `docs/2026-03-03-release-finalization-plan.md` for owner/status tracking; t
 
 ## Install
 - [ ] `install-orchestrator.sh` runs cleanly
-- [ ] `clawdbot-gateway` active under systemd
-- [ ] orchestrator worker service active (if split process)
+- [ ] OpenClaw gateway reachable (`openclaw gateway status`)
+- [ ] orchestrator worker scheduler active for host runtime model
 - [ ] DB created + migrations applied at `${OPENCLAW_HOME}/.openclaw/orchestrator/orchestrator.db`
 - [ ] Artifacts directory created at `${OPENCLAW_HOME}/.openclaw/orchestrator/artifacts`
 - [ ] scheduler installed for platform:
