@@ -1,7 +1,0 @@
-OPENCLAW_HOME=/tmp/tmp.PlzRQeqDEd
-CONFIG_DB_PATH=/tmp/tmp.PlzRQeqDEd/.openclaw/orchestrator/orchestrator.db
-DB_EXISTS=True
-APPLIED_MIGRATIONS=0001_init,0002_run_dispatch_linkage,0003_dispatch_attempts
-ARTIFACTS_DIR=/tmp/tmp.PlzRQeqDEd/.openclaw/orchestrator/artifacts
-ARTIFACTS_DIR_EXISTS=True
-EXPECTED_DB_PREFIX=/tmp/tmp.PlzRQeqDEd/.openclaw/orchestrator

@@ -1,2 +1,0 @@
-artifact_id=artifact_test
-path=/tmp/tmprf5sfqe_/.openclaw/orchestrator/artifacts/task_1.png

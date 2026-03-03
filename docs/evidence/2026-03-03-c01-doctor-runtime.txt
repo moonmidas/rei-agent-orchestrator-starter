@@ -1,3 +1,0 @@
-== orchestrator db ==
-db path: /home/clawdbot/.openclaw/orchestrator/orchestrator.db
-runtime-doctor: OK
