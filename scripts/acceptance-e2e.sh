@@ -5,22 +5,31 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME}"
 OPENCLAW_DATA_DIR="$OPENCLAW_HOME/.openclaw"
 export PYTHONPATH="$ROOT"
-MODE="real"
+MODE="real-local"
 THREAD_ID=""
 
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/acceptance-e2e.sh [--mock] [--thread-id <discord_thread_id>]
+  scripts/acceptance-e2e.sh [--mock | --real-local | --real-discord] [--thread-id <discord_thread_id>]
 
 Modes:
-  --mock      Run fully local acceptance with fake openclaw binary.
-  (default)   Real mode; requires --thread-id.
+  --mock          Fully local; fake openclaw dispatch + fake milestone sender.
+  --real-local    Real runtime checks + local no-op milestone sender (default).
+  --real-discord  Real runtime checks + real Discord milestone send validation.
 
-Notes:
-  - In real mode, --thread-id must point to a valid Discord thread/channel where
-    the current OpenClaw account can send messages.
-  - Acceptance fails if any milestone notification event records a non-null error.
+Mode requirements / pass criteria:
+  mock:
+    - no external services required
+    - passes when orchestration flow reaches completed state
+  real-local:
+    - requires openclaw + healthy gateway + gh auth + chad agent
+    - uses local no-op milestone send command
+    - passes when orchestration flow reaches completed state
+  real-discord:
+    - same prerequisites as real-local
+    - requires --thread-id <discord_thread_id>
+    - fails if any run milestone event payload has non-null error
 USAGE
 }
 
@@ -28,6 +37,14 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --mock)
       MODE="mock"
+      shift
+      ;;
+    --real-local)
+      MODE="real-local"
+      shift
+      ;;
+    --real-discord)
+      MODE="real-discord"
       shift
       ;;
     --thread-id)
@@ -54,7 +71,6 @@ preflight_real() {
   openclaw gateway status >/dev/null || { echo "gateway unhealthy" >&2; exit 1; }
   command -v gh >/dev/null || { echo "missing gh" >&2; exit 1; }
   gh auth status >/dev/null || { echo "gh auth missing" >&2; exit 1; }
-  [[ -n "$THREAD_ID" ]] || { echo "real mode requires --thread-id <discord_thread_id>" >&2; exit 1; }
   python3 - <<'PY'
 import json, subprocess, sys
 cp = subprocess.run(['openclaw','agents','list','--json'], check=True, capture_output=True, text=True)
@@ -75,6 +91,7 @@ PY
 TMP_BIN=""
 TMP_MESSAGES=""
 TMP_SENT=""
+MILESTONE_CFG='"milestones": {}'
 if [[ "$MODE" == "mock" ]]; then
   THREAD_ID="${THREAD_ID:-acceptance-thread}"
   TMP_BIN="$(mktemp -d)"
@@ -107,8 +124,16 @@ MOCK
   export PATH="$TMP_BIN:$PATH"
   export OPENCLAW_FAKE_MESSAGES_FILE="$TMP_MESSAGES"
   export OPENCLAW_FAKE_SENT_FILE="$TMP_SENT"
+  MILESTONE_CFG='"milestones": {"targetThreadId": "'"$THREAD_ID"'"}'
 else
   preflight_real
+  if [[ "$MODE" == "real-discord" ]]; then
+    [[ -n "$THREAD_ID" ]] || { echo "real-discord mode requires --thread-id <discord_thread_id>" >&2; exit 1; }
+    MILESTONE_CFG='"milestones": {"targetThreadId": "'"$THREAD_ID"'"}'
+  else
+    THREAD_ID="${THREAD_ID:-acceptance-local-thread}"
+    MILESTONE_CFG='"milestones": {"targetThreadId": "'"$THREAD_ID"'", "sendCommand": ["python3", "-c", "print(\"{\\\"ok\\\":true}\")"]}'
+  fi
 fi
 
 cat > "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" <<JSON
@@ -120,9 +145,7 @@ cat > "$OPENCLAW_DATA_DIR/orchestrator/config.acceptance.json" <<JSON
       "keywords": ["approve"],
       "fetchCommand": ["openclaw", "message", "read", "--channel", "discord", "--target", "{thread_id}", "--limit", "{limit}"]
     },
-    "milestones": {
-      "targetThreadId": "$THREAD_ID"
-    }
+    $MILESTONE_CFG
   },
   "runtime": {
     "openclawDispatch": {
@@ -177,10 +200,10 @@ for ev in all_milestones:
     payload=json.loads(ev['payload_json']) if ev['payload_json'] else {}
     if payload.get('error') is not None:
         bad.append({'event_type': ev['event_type'], 'error': payload.get('error')})
-if bad:
+if '${MODE}' == 'real-discord' and bad:
     print(json.dumps({'milestone_errors': bad}, sort_keys=True))
     raise SystemExit(3)
-print(json.dumps({'mode': '${MODE}', 'thread_id': '${THREAD_ID}', 'run_id': run['id'], 'session_key': run['openclaw_session_key'], 'state': run['state'], 'dispatch_command': run['dispatch_command'], 'dispatch_error_json': run['dispatch_error_json'], 'events': [e['event_type'] for e in events], 'milestones_checked': len(all_milestones)}, sort_keys=True))
+print(json.dumps({'mode': '${MODE}', 'thread_id': '${THREAD_ID}', 'run_id': run['id'], 'session_key': run['openclaw_session_key'], 'state': run['state'], 'dispatch_command': run['dispatch_command'], 'dispatch_error_json': run['dispatch_error_json'], 'events': [e['event_type'] for e in events], 'milestones_checked': len(all_milestones), 'milestone_errors': bad}, sort_keys=True))
 PY
 )
 

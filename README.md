@@ -33,25 +33,31 @@ Linux installer now verifies `rei-orchestrator-worker.timer` is active before su
 ```bash
 python3 -m unittest discover -s tests -v
 scripts/doctor.sh
-scripts/acceptance-e2e.sh --thread-id <discord_thread_id>
+scripts/acceptance-e2e.sh --real-local
 ```
 
-Mock acceptance is explicit opt-in only:
+Acceptance modes are explicit:
 
 ```bash
+# Fully local/fake path
 scripts/acceptance-e2e.sh --mock
+
+# Real runtime, local no-op milestone sender (default if no mode flag)
+scripts/acceptance-e2e.sh --real-local
+
+# Full Discord-integrated acceptance
+scripts/acceptance-e2e.sh --real-discord --thread-id <discord_thread_id>
 ```
 
-## Acceptance preflight (real mode)
+## Acceptance preflight
 
-`scripts/acceptance-e2e.sh` real mode fails fast unless all are healthy:
+`--real-local` and `--real-discord` fail fast unless all are healthy:
 
 - `openclaw gateway status`
 - `gh auth status`
 - `chad` agent present
-- `--thread-id <discord_thread_id>` is provided and used for milestone posts
 
-The script now hard-fails if any persisted milestone event payload contains a non-null `error`.
+`--real-discord` additionally requires `--thread-id <discord_thread_id>` and hard-fails if any persisted milestone event payload contains a non-null `error`.
 
 ## Scheduler
 
@@ -71,7 +77,8 @@ scripts/install-launchd-macos.sh uninstall
 
 - [ ] `python3 -m unittest discover -s tests -v`
 - [ ] `scripts/doctor.sh`
-- [ ] `scripts/acceptance-e2e.sh` (real mode)
+- [ ] `scripts/acceptance-e2e.sh --real-local`
+- [ ] `scripts/acceptance-e2e.sh --real-discord --thread-id <discord_thread_id>`
 - [ ] Optional: `scripts/acceptance-e2e.sh --mock`
 - [ ] Confirm milestone notifications in origin Discord thread
 - [ ] Confirm UI-task completion blocked without screenshot artifact

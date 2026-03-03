@@ -97,7 +97,7 @@ Close the release blockers found in the repo audit so `rei-agent-orchestrator-st
   - script checks milestone event payload errors and fails on non-null error.
 
 ### D-02 Add acceptance modes explicitly
-- **Status:** todo
+- **Status:** done
 - **Goal:** Separate concerns: local runtime acceptance vs full Discord-integrated acceptance.
 - **Files:**
   - `scripts/acceptance-e2e.sh`
