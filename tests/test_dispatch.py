@@ -38,6 +38,28 @@ class _FailDispatchAdapter(_FakeDispatchAdapter):
         raise DispatchError('boom', ['openclaw', 'agent'], {'stderr': 'x'})
 
 
+
+
+class _ProbeOnlyAdapter(_FakeDispatchAdapter):
+    def __init__(self):
+        super().__init__()
+        self._known_agents = set()
+        self.probe_calls = 0
+
+    def probe_capabilities(self):
+        self.probe_calls += 1
+        self._known_agents = {'writer'}
+
+    def dispatch(self, task, run_id, agent):
+        self.calls += 1
+
+        class R:
+            session_key = f'session-{run_id}'
+            command = ['openclaw', 'agent', '--json']
+            raw = {'session_key': session_key}
+
+        return R()
+
 class _NoopNotifier:
     def notify(self, *args, **kwargs):
         return None
@@ -113,6 +135,18 @@ class TestDispatch(unittest.TestCase):
         self.assertIn('session-', run['openclaw_session_key'])
         self.assertIn('openclaw agent', run['dispatch_command'])
         self.assertIn('session_key', run['dispatch_response_json'])
+
+
+    def test_non_code_routing_probes_agents_before_resolve(self):
+        plan = self.repo.create_plan('th2', '/execute-plan write content', 'write content')
+        task_id = self.repo.create_task(plan, 'Write docs', 'content', 1)
+        self.repo.approve_plan(plan, 'u1', 'th2', 'approve')
+        cfg = {'routing': {'map': {'content': 'writer', 'default': 'chad'}, 'devFallbackAgent': 'chad'}}
+        adapter = _ProbeOnlyAdapter()
+        engine = DispatchEngine(self.repo, cfg, available_agents=None, dispatch_adapter=adapter, notifier=_NoopNotifier())
+        run_id = engine.dispatch_task(self._task(task_id))
+        self.assertTrue(run_id)
+        self.assertEqual(adapter.probe_calls, 1)
 
     def test_dispatch_error_persists_attempt(self):
         engine = DispatchEngine(self.repo, self.cfg, {'chad'}, dispatch_adapter=_FailDispatchAdapter(), notifier=_NoopNotifier())

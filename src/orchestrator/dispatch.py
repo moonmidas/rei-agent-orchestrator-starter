@@ -36,7 +36,15 @@ class DispatchEngine:
             run_id = existing['id']
             agent = existing['agent_id']
         else:
-            available_agents = self.available_agents or set(getattr(self.dispatch_adapter, '_known_agents', set()) or {'chad'})
+            available_agents = set(self.available_agents or [])
+            if not available_agents and hasattr(self.dispatch_adapter, 'probe_capabilities'):
+                try:
+                    self.dispatch_adapter.probe_capabilities()
+                except Exception:
+                    pass
+                available_agents = set(getattr(self.dispatch_adapter, '_known_agents', set()) or set())
+            if not available_agents:
+                available_agents = {'chad'}
             agent = resolve_agent(task, self.config, available_agents)
             run_id = self.repo.create_run(task['id'], agent, dedupe, 'running')
             self.notifier.notify(self.repo, 'queued', task['plan_id'], task['id'], run_id, origin_thread, f"🟡 queued: task {task['id']} -> {agent}")
