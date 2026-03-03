@@ -85,7 +85,7 @@ install_scheduler_linux() {
 ensure_chad_agent() {
   echo "[agent-check] verifying chad agent"
 
-  if run_as_app_user "$OPENCLAW_BIN" agents list --json | jq -e '.agents[]? | select(((.id // .name // "") | ascii_downcase) == "chad")' >/dev/null; then
+  if run_as_app_user "$OPENCLAW_BIN" agents list --json | jq -e '((if type=="array" then . elif type=="object" then (.agents // []) else [] end)[]? | (.id // .name // . // "") | tostring | ascii_downcase) == "chad"' >/dev/null; then
     echo "[agent-check] chad already present"
     return
   fi
